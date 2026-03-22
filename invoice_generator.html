@@ -16,50 +16,39 @@
   header{background:var(--accent);color:white;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.15);}
   header h1{font-family:'DM Serif Display',serif;font-size:1.4rem;font-weight:400;}
   header .subtitle{font-size:.78rem;opacity:.7;font-family:'DM Mono',monospace;margin-top:2px;}
-  .free-badge{background:#27ae60;color:white;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.04em;margin-left:10px;vertical-align:middle;}
+  .free-badge{background:#27ae60;color:white;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.04em;margin-left:10px;}
   .app{max-width:920px;margin:0 auto;padding:28px 20px 80px;}
   .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:20px;}
   .card-title{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--accent);margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
 
-  /* Setup */
-  .setup-steps{background:#f0f7ff;border:1.5px solid #b3d4f5;border-radius:10px;padding:16px 18px;font-size:.87rem;line-height:1.7;}
-  .setup-steps ol{padding-left:18px;margin:8px 0 12px;}
-  .setup-steps li{margin-bottom:4px;}
-  .setup-steps code{background:#e3edf7;padding:1px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:.82rem;}
-  .setup-steps a{color:#1a73e8;}
-  .gid-row{display:flex;gap:8px;margin-top:10px;}
-  .gid-row input{flex:1;padding:8px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:.83rem;font-family:'DM Mono',monospace;}
-  .connected-badge{display:none;align-items:center;gap:8px;padding:9px 14px;background:#e8f5e9;border-radius:8px;font-size:.87rem;color:#2c5f2e;font-weight:600;margin-top:10px;}
-  .connected-badge.visible{display:flex;}
+  /* Sign-in */
+  .signin-box{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;padding:18px 20px;background:#f0f7ff;border:1.5px solid #b3d4f5;border-radius:10px;}
+  .signin-box p{font-size:.88rem;color:#444;line-height:1.6;max-width:500px;}
+  .btn-google{background:#fff;color:#3c4043;border:1.5px solid #dadce0;display:inline-flex;align-items:center;gap:10px;padding:11px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .15s;box-shadow:0 1px 4px rgba(0,0,0,.1);}
+  .btn-google:hover{background:#f8f9fa;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+  .signed-in-row{display:none;align-items:center;gap:10px;padding:10px 14px;background:#e8f5e9;border-radius:8px;margin-top:10px;}
+  .signed-in-row.visible{display:flex;}
+  .signed-in-row .email{font-size:.85rem;color:#555;}
 
-  /* Upload */
-  .upload-source-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
-  .upload-divider{font-size:.8rem;color:#bbb;font-weight:500;padding:0 4px;}
-  .btn-drive{background:#fff;color:#3c4043;border:1.5px solid #dadce0;display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
+  /* Drive picker button */
+  .btn-drive{background:#fff;color:#3c4043;border:1.5px solid #dadce0;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .15s;box-shadow:0 1px 4px rgba(0,0,0,.08);}
   .btn-drive:hover{background:#f1f8ff;border-color:#4285f4;}
   .btn-drive:disabled{opacity:.45;cursor:not-allowed;}
-  .upload-zone{border:2px dashed var(--border);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:#fafaf8;position:relative;}
-  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-light);}
-  .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
-  .upload-icon{font-size:2rem;margin-bottom:8px;}
-  .upload-zone p{color:var(--ink-soft);font-size:.88rem;}
-  .upload-zone strong{color:var(--accent);}
+
+  /* Thumbs */
   .thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
-  .thumb{position:relative;width:88px;height:88px;border-radius:8px;overflow:hidden;border:2px solid var(--border);flex-shrink:0;}
+  .thumb{position:relative;width:88px;height:88px;border-radius:8px;overflow:hidden;border:2px solid var(--border);flex-shrink:0;transition:border-color .2s;}
   .thumb img{width:100%;height:100%;object-fit:cover;}
+  .thumb.done{border-color:#27ae60;}
   .thumb .remove-img{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-  .thumb .src-badge{position:absolute;bottom:3px;left:3px;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;}
-  .thumb .src-badge.drive{background:#4285f4;}
-  .thumb .src-badge.local{background:#888;}
-  .thumb .ocr-ok{position:absolute;top:3px;left:3px;font-size:14px;}
+  .thumb .ocr-ok{position:absolute;bottom:3px;left:3px;font-size:15px;}
 
   /* Status */
-  .status-bar{display:none;align-items:center;gap:12px;padding:11px 15px;background:var(--accent-light);border-radius:8px;margin-top:12px;font-size:.87rem;color:var(--accent);font-weight:500;}
+  .status-bar{display:none;align-items:center;gap:12px;padding:12px 15px;background:var(--accent-light);border-radius:8px;margin-top:12px;font-size:.87rem;color:var(--accent);font-weight:500;}
   .status-bar.visible{display:flex;}
   .spinner{width:17px;height:17px;border:2.5px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
   @keyframes spin{to{transform:rotate(360deg);}}
-
-  .scan-btn{margin-top:14px;display:flex;align-items:center;gap:10px;}
+  .scan-btn{margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 
   /* Sessions */
   .sessions-header{display:grid;grid-template-columns:105px 1fr 175px 80px 80px 36px;gap:8px;font-size:.71rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;}
@@ -70,8 +59,6 @@
   input:focus,select:focus{outline:none;border-color:var(--accent);}
   .ocr-filled{border-color:#4285f4 !important;background:#f0f7ff !important;}
   .row{display:grid;gap:14px;grid-template-columns:1fr 1fr;}
-
-  /* Buttons */
   .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;}
   .btn-primary{background:var(--accent);color:white;}
   .btn-primary:hover{background:#234e25;transform:translateY(-1px);}
@@ -91,7 +78,7 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#222;color:white;padding:12px 22px;border-radius:30px;font-size:.88rem;transition:transform .3s ease;z-index:999;pointer-events:none;}
   .toast.show{transform:translateX(-50%) translateY(0);}
 
-  /* Invoice print */
+  /* Invoice */
   @media print{body{background:white;}.no-print{display:none !important;}.app{padding:0;max-width:100%;}.card{box-shadow:none;border-radius:0;padding:0;margin:0;}#invoice-preview{display:block !important;padding:20px;}}
   #invoice-preview{display:none;}
   .inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;}
@@ -127,70 +114,54 @@
 <header class="no-print">
   <div>
     <h1>📋 Invoice Generator <span class="free-badge">100% FREE</span></h1>
-    <div class="subtitle">Gwinganna Lifestyle Retreat · Yusuke Komiya · Google OCR powered</div>
+    <div class="subtitle">Gwinganna Lifestyle Retreat · Yusuke Komiya · Powered by Google OCR</div>
   </div>
 </header>
 
 <div class="app">
 <div id="form-section">
 
-  <!-- Google Setup -->
+  <!-- Step 1: Sign in -->
   <div class="card no-print">
     <div class="card-title">
-      <svg width="18" height="18" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
-      Google Account Setup
-      <span style="font-size:.72rem;font-weight:400;font-family:'DM Sans',sans-serif;color:#aaa;margin-left:4px;">one-time only</span>
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Step 1 — Sign in with Google
     </div>
-
-    <div class="setup-steps">
-      <strong>This app uses Google Drive's free OCR — completely free, no API costs ever.</strong><br>
-      You need a free Google OAuth Client ID (takes ~3 minutes, one time only):
-      <ol>
-        <li>Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → create or select a project</li>
-        <li>Search and enable: <code>Google Drive API</code> and <code>Google Picker API</code></li>
-        <li>Go to <strong>Credentials → + Create Credentials → OAuth 2.0 Client ID</strong></li>
-        <li>Application type: <strong>Web application</strong></li>
-        <li>Under <strong>Authorised JavaScript origins</strong> add the address bar URL of this HTML file (e.g. <code>file://</code> or your local server address)</li>
-        <li>Copy the <strong>Client ID</strong> and paste below</li>
-      </ol>
-      <div class="gid-row">
-        <input type="text" id="google-client-id" placeholder="xxxxxxxxxx-xxxx.apps.googleusercontent.com">
-        <button class="btn btn-primary btn-sm" onclick="saveAndConnect()">Connect Google</button>
-      </div>
+    <div class="signin-box">
+      <p>Sign in with your Google account to pick photos directly from Google Drive — works on phone and computer. Free, no extra setup needed.</p>
+      <button class="btn-google" id="signin-btn" onclick="signIn()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Sign in with Google
+      </button>
     </div>
-    <div class="connected-badge" id="connected-badge">
-      ✅ Connected as <span id="connected-email" style="font-weight:400;margin-left:4px;"></span>
+    <div class="signed-in-row" id="signed-in-row">
+      <span>✅ Signed in as</span>
+      <span class="email" id="signed-in-email"></span>
       <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="signOut()">Sign out</button>
     </div>
   </div>
 
-  <!-- Upload Photos -->
+  <!-- Step 2: Pick photos -->
   <div class="card no-print">
-    <div class="card-title">📸 Schedule Photos</div>
-    <div class="upload-source-row">
-      <button class="btn-drive" id="drive-picker-btn" onclick="openDrivePicker()" disabled>
-        <svg width="16" height="16" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
-        Pick from Google Drive
-      </button>
-      <span class="upload-divider">or</span>
-      <span style="font-size:.82rem;color:var(--ink-soft);">upload from computer below</span>
-    </div>
-    <div class="upload-zone" id="drop-zone">
-      <input type="file" id="img-input" multiple accept="image/*" onchange="handleLocalFiles(this.files)">
-      <div class="upload-icon">🗓️</div>
-      <p><strong>Drag & drop</strong> schedule photos here, or click to browse</p>
-      <p style="margin-top:5px;font-size:.79rem;color:#aaa;">JPG, PNG · one per day · multiple OK</p>
-    </div>
-    <div class="thumbs" id="thumbs"></div>
+    <div class="card-title">📸 Step 2 — Pick Your Schedule Photos</div>
+    <p style="font-size:.87rem;color:var(--ink-soft);margin-bottom:16px;">
+      Click the button below to open Google Drive and select all your weekly schedule photos at once — works on phone and computer.
+    </p>
+    <button class="btn-drive" id="drive-btn" onclick="openDrivePicker()" disabled>
+      <svg width="16" height="16" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+      Pick Photos from Google Drive
+    </button>
 
+    <div class="thumbs" id="thumbs"></div>
     <div id="status-bar" class="status-bar">
       <div class="spinner"></div>
-      <span id="status-text">Reading text from photos…</span>
+      <span id="status-text">Processing…</span>
     </div>
-
     <div class="scan-btn">
-      <button class="btn btn-primary" id="scan-btn" onclick="runOCR()" disabled>🔍 Read & Extract Sessions (Free)</button>
-      <span style="font-size:.82rem;color:var(--ink-soft)" id="img-count"></span>
+      <button class="btn btn-primary" id="scan-btn" onclick="runOCR()" disabled>
+        🔍 Read All Photos &amp; Extract Sessions
+      </button>
+      <span style="font-size:.82rem;color:var(--ink-soft);" id="img-count"></span>
     </div>
   </div>
 
@@ -206,7 +177,7 @@
   <!-- Sessions -->
   <div class="card no-print">
     <div class="card-title">💆 Sessions
-      <span style="font-size:.75rem;font-family:'DM Sans',sans-serif;font-weight:400;color:#aaa;margin-left:4px;">(blue = OCR-extracted, editable)</span>
+      <span style="font-size:.75rem;font-family:'DM Sans',sans-serif;font-weight:400;color:#aaa;margin-left:4px;">(blue = auto-extracted, editable)</span>
     </div>
     <div class="sessions-header">
       <div>Date</div><div>Treatment</div><div>Client</div><div>Amount $</div><div>Tips $</div><div></div>
@@ -291,7 +262,9 @@
 
 <script src="https://apis.google.com/js/api.js"></script>
 <script>
-// ── Treatment rates ──
+const CLIENT_ID = '955548089142-btns2vovejhn21uh3vacrlci3k19eqr8.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive';
+
 const RATES = {
   'Gwinganna Intuitive Massage 80min':101,'Gwinganna Intuitive Massage 50min':70,
   'Gwinganna Classic Massage 80min':63.89,'Gwinganna Classic Massage 50min':44.10,
@@ -304,87 +277,68 @@ const RATES = {
 const TREATMENTS = Object.keys(RATES);
 
 let sessions = [];
-let uploadedImages = []; // {dataUrl, base64, mimeType, name, fromDrive, fileId}
-let googleClientId = localStorage.getItem('google_client_id') || '';
+let uploadedImages = [];
 let accessToken = null;
 let gapiReady = false;
 
 document.getElementById('inv-date').valueAsDate = new Date();
-if (googleClientId) {
-  document.getElementById('google-client-id').value = googleClientId;
-  loadGapi();
-}
 
 // ── Google Auth ──
-function saveAndConnect() {
-  googleClientId = document.getElementById('google-client-id').value.trim();
-  if (!googleClientId) { alert('Please paste your Google Client ID.'); return; }
-  localStorage.setItem('google_client_id', googleClientId);
-  loadGapi();
-}
-
-function loadGapi() {
-  gapi.load('auth2:picker:client', () => {
-    gapi.auth2.init({ client_id: googleClientId, scope: 'https://www.googleapis.com/auth/drive' })
-      .then(() => {
-        gapiReady = true;
-        const auth = gapi.auth2.getAuthInstance();
-        if (auth.isSignedIn.get()) {
-          onSignedIn(auth.currentUser.get());
-        }
-        // Auto-sign-in silently if possible
-        auth.signIn({ prompt: 'none' }).then(u => onSignedIn(u)).catch(() => {});
-      })
-      .catch(e => alert('Google init error: ' + (e.error || e.message || JSON.stringify(e))));
+function initGapi() {
+  gapi.load('client:auth2:picker', () => {
+    gapi.client.init({ clientId: CLIENT_ID, scope: SCOPES }).then(() => {
+      gapiReady = true;
+      const auth = gapi.auth2.getAuthInstance();
+      if (auth.isSignedIn.get()) onSignedIn(auth.currentUser.get());
+      // Try silent sign-in
+      auth.signIn({ prompt: 'none' }).then(u => onSignedIn(u)).catch(() => {});
+    }).catch(e => console.error('GAPI init error:', e));
   });
 }
 
-async function ensureSignedIn() {
-  if (!gapiReady) { alert('Please connect Google first.'); return false; }
-  const auth = gapi.auth2.getAuthInstance();
-  if (!auth.isSignedIn.get()) {
-    try {
-      const user = await auth.signIn({ scope: 'https://www.googleapis.com/auth/drive' });
-      onSignedIn(user);
-    } catch(e) { return false; }
-  }
-  return true;
+function signIn() {
+  if (!gapiReady) { showToast('Loading Google… try again in a moment.'); return; }
+  gapi.auth2.getAuthInstance().signIn({ scope: SCOPES })
+    .then(u => onSignedIn(u))
+    .catch(e => { if (e.error !== 'popup_closed_by_user') showToast('Sign-in failed: ' + (e.error || e.message)); });
 }
 
 function onSignedIn(user) {
   accessToken = user.getAuthResponse().access_token;
-  const profile = user.getBasicProfile();
-  document.getElementById('connected-badge').classList.add('visible');
-  document.getElementById('connected-email').textContent = profile.getEmail();
-  document.getElementById('drive-picker-btn').disabled = false;
+  const email = user.getBasicProfile().getEmail();
+  document.getElementById('signed-in-row').classList.add('visible');
+  document.getElementById('signed-in-email').textContent = email;
+  document.getElementById('signin-btn').style.display = 'none';
+  document.getElementById('drive-btn').disabled = false;
+  showToast('Signed in as ' + email);
 }
 
 function signOut() {
   gapi.auth2.getAuthInstance().signOut().then(() => {
     accessToken = null;
-    document.getElementById('connected-badge').classList.remove('visible');
-    document.getElementById('drive-picker-btn').disabled = true;
-    showToast('Signed out of Google');
+    document.getElementById('signed-in-row').classList.remove('visible');
+    document.getElementById('signin-btn').style.display = '';
+    document.getElementById('drive-btn').disabled = true;
+    showToast('Signed out');
   });
 }
 
 // ── Drive Picker ──
-async function openDrivePicker() {
-  const ok = await ensureSignedIn();
-  if (!ok) return;
+function openDrivePicker() {
+  if (!accessToken) { signIn(); return; }
   const picker = new google.picker.PickerBuilder()
     .addView(new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES).setIncludeFolders(true))
     .setOAuthToken(accessToken)
     .setCallback(pickerCallback)
     .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-    .setTitle('Select your daily schedule photos')
+    .setTitle('Select your weekly schedule photos')
     .build();
   picker.setVisible(true);
 }
 
 async function pickerCallback(data) {
   if (data.action !== google.picker.Action.PICKED) return;
-  setStatus(true, `Loading ${data.docs.length} file(s) from Google Drive…`);
+  setStatus(true, `Loading ${data.docs.length} photo(s) from Google Drive…`);
   for (const doc of data.docs) {
     try {
       const resp = await fetch(
@@ -392,44 +346,22 @@ async function pickerCallback(data) {
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const blob = await resp.blob();
-      const dataUrl = await blobToDataUrl(blob);
-      uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: doc.mimeType||'image/jpeg', name: doc.name, fromDrive: true, fileId: doc.id });
+      const dataUrl = await new Promise((res, rej) => {
+        const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsDataURL(blob);
+      });
+      uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: doc.mimeType||'image/jpeg', name: doc.name, fileId: doc.id });
       renderThumbs();
-    } catch(e) { console.error('Load error', doc.name, e); }
+    } catch(e) { showToast('Could not load ' + doc.name); }
   }
   setStatus(false);
 }
 
-function blobToDataUrl(blob) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = e => res(e.target.result);
-    r.onerror = rej;
-    r.readAsDataURL(blob);
-  });
-}
-
-// ── Local upload ──
-function handleLocalFiles(files) {
-  Array.from(files).forEach(f => {
-    const r = new FileReader();
-    r.onload = e => {
-      const dataUrl = e.target.result;
-      uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: f.type||'image/jpeg', name: f.name, fromDrive: false });
-      renderThumbs();
-    };
-    r.readAsDataURL(f);
-  });
-}
-
 function renderThumbs() {
-  const c = document.getElementById('thumbs');
-  c.innerHTML = '';
+  const c = document.getElementById('thumbs'); c.innerHTML = '';
   uploadedImages.forEach((img, i) => {
     const d = document.createElement('div');
-    d.className = 'thumb';
-    d.innerHTML = `<img src="${img.dataUrl}" alt="${img.name}">
-      <div class="src-badge ${img.fromDrive?'drive':'local'}">${img.fromDrive?'Drive':'Local'}</div>
+    d.className = 'thumb' + (img.ocrDone ? ' done' : '');
+    d.innerHTML = `<img src="${img.dataUrl}">
       ${img.ocrDone ? '<div class="ocr-ok">✅</div>' : ''}
       <button class="remove-img" onclick="removeImg(${i})">✕</button>`;
     c.appendChild(d);
@@ -440,171 +372,95 @@ function renderThumbs() {
 }
 function removeImg(i) { uploadedImages.splice(i, 1); renderThumbs(); }
 
-const dropZone = document.getElementById('drop-zone');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleLocalFiles(e.dataTransfer.files); });
-
-// ── Google Drive OCR (FREE) ──
-// Strategy: upload image to Drive with OCR conversion → get Google Doc → read text → delete temp file
-async function ocrImageWithDrive(img) {
-  const ok = await ensureSignedIn();
-  if (!ok) throw new Error('Not signed in to Google');
-
-  // Step 1: Upload image to Drive with OCR → creates a Google Doc
-  setStatus(true, `Reading text from ${img.name}…`);
-  const metadata = { name: `_ocr_temp_${Date.now()}`, mimeType: 'application/vnd.google-apps.document' };
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-  // Convert base64 to blob
+// ── Free Google Drive OCR ──
+async function ocrImage(img) {
+  const metadata = { name: `_ocr_tmp_${Date.now()}`, mimeType: 'application/vnd.google-apps.document' };
   const byteStr = atob(img.base64);
   const arr = new Uint8Array(byteStr.length);
   for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
   form.append('file', new Blob([arr], { type: img.mimeType }));
-
-  const uploadResp = await fetch(
+  const up = await fetch(
     'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
     { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form }
   );
-  if (!uploadResp.ok) throw new Error('Drive upload failed: ' + uploadResp.status);
-  const { id: docId } = await uploadResp.json();
-
-  // Step 2: Export Google Doc as plain text
-  const exportResp = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=text/plain`,
+  if (!up.ok) throw new Error('Upload failed: ' + up.status);
+  const { id } = await up.json();
+  const ex = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=text/plain`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
-  const text = await exportResp.text();
-
-  // Step 3: Delete temp file (cleanup)
-  fetch(`https://www.googleapis.com/drive/v3/files/${docId}`, {
-    method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` }
-  });
-
+  const text = await ex.text();
+  fetch(`https://www.googleapis.com/drive/v3/files/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
   return text;
 }
 
 async function runOCR() {
+  if (!accessToken) { showToast('Please sign in first.'); return; }
   if (!uploadedImages.length) return;
-  const ok = await ensureSignedIn();
-  if (!ok) { alert('Please connect your Google account first.'); return; }
-
   document.getElementById('scan-btn').disabled = true;
   sessions = [];
   let allText = '';
-
   for (let i = 0; i < uploadedImages.length; i++) {
     const img = uploadedImages[i];
     setStatus(true, `Reading photo ${i+1} of ${uploadedImages.length}: ${img.name}…`);
     try {
-      const text = await ocrImageWithDrive(img);
-      allText += '\n\n--- IMAGE: ' + img.name + ' ---\n' + text;
+      const text = await ocrImage(img);
+      allText += `\n\n=== ${img.name} ===\n${text}`;
       img.ocrDone = true;
       renderThumbs();
-    } catch(e) {
-      showToast(`⚠️ Could not read ${img.name}: ${e.message}`);
-    }
+    } catch(e) { showToast(`Could not read ${img.name}: ${e.message}`); }
   }
-
-  setStatus(true, 'Parsing session data…');
-  const parsed = parseScheduleText(allText);
-  sessions = parsed;
+  setStatus(true, 'Extracting sessions…');
+  sessions = parseScheduleText(allText);
   renderSessions();
   setStatus(false);
-
-  if (sessions.length > 0) {
-    showToast(`✅ Extracted ${sessions.length} sessions — 100% free!`);
-  } else {
-    showToast('⚠️ No sessions found — check the text was readable');
-  }
   document.getElementById('scan-btn').disabled = false;
+  sessions.length > 0
+    ? showToast(`✅ Extracted ${sessions.length} sessions from ${uploadedImages.length} photos — free!`)
+    : showToast('⚠️ No sessions found — check photos are clear and try again');
 }
 
-// ── Parse OCR text into sessions ──
+// ── Parse OCR text ──
 function parseScheduleText(text) {
   const results = [];
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-
-  // Extract date from image header lines like "Yusuke Komiya - Saturday, 21 March 2026"
-  // or "Daily Schedule - Yusuke Komiya" followed by a date line
-  let currentDate = '';
-
-  // Time pattern: 11:00 AM, 12:30 PM etc
   const timeRe = /(\d{1,2}:\d{2}\s*[AP]M)/i;
-  // Tip pattern: $ followed by digits
-  const tipRe = /\$\s*(\d+)/;
-  // Date patterns
   const dateRe = /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i;
   const months = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
-
+  const tipRe = /\$\s*(\d+)/;
+  let currentDate = '';
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-
-    // Detect date line
     const dm = line.match(dateRe);
-    if (dm) {
-      const day = dm[1].padStart(2,'0');
-      const month = String(months[dm[2].toLowerCase()]).padStart(2,'0');
-      const year = dm[3];
-      currentDate = `${year}-${month}-${day}`;
-      continue;
-    }
-
-    // Detect appointment line (has a time)
+    if (dm) { currentDate = `${dm[3]}-${String(months[dm[2].toLowerCase()]).padStart(2,'0')}-${dm[1].padStart(2,'0')}`; continue; }
     const tm = line.match(timeRe);
-    if (tm) {
-      const time = tm[1];
-      // Treatment: text after the time
-      let rest = line.slice(line.indexOf(tm[0]) + tm[0].length).trim();
-      // Remove Spa Room references
-      rest = rest.replace(/Spa Room\s*#?\s*\d+/i, '').trim();
-
-      const treatment = normTreatment(rest);
-      const amount = lookupRate(treatment);
-
-      // Look ahead for client name and tip (next 1-3 lines)
-      let client = '';
-      let tip = 0;
-      for (let j = i+1; j < Math.min(i+5, lines.length); j++) {
-        const next = lines[j];
-        if (next.match(timeRe)) break; // next appointment
-        if (next.match(dateRe)) break;
-        // Tip line
-        const tipMatch = next.match(tipRe);
-        if (tipMatch) { tip = parseInt(tipMatch[1]); continue; }
-        // Notes line - skip
-        if (/^notes:/i.test(next)) continue;
-        // Spa Room line - skip
-        if (/spa room/i.test(next)) continue;
-        // First non-junk line after time = client name
-        if (!client && next.length > 2 && !/^\$/.test(next) && !/^(tip|signature)/i.test(next)) {
-          client = next.replace(/Spa Room.*/i,'').trim();
-        }
-      }
-
-      if (client || treatment) {
-        results.push({
-          id: Date.now() + Math.random(),
-          date: currentDate,
-          treatment,
-          client,
-          amount,
-          tips: tip > 0 ? tip : '',
-          ocr: true
-        });
-      }
+    if (!tm) continue;
+    let treatRaw = line.slice(line.indexOf(tm[0]) + tm[0].length).trim().replace(/Spa Room\s*#?\s*\d+/i,'').trim();
+    const treatment = normTreatment(treatRaw);
+    const amount = lookupRate(treatment);
+    let client = '', tip = 0;
+    for (let j = i+1; j < Math.min(i+6, lines.length); j++) {
+      const next = lines[j];
+      if (next.match(timeRe) || next.match(dateRe)) break;
+      if (/^notes:/i.test(next) || /spa room/i.test(next) || /^(tip|signature|time|service|client)\b/i.test(next)) continue;
+      const tipM = next.match(tipRe);
+      if (tipM) { tip = parseInt(tipM[1]); continue; }
+      if (!client && next.length > 1) client = next.replace(/Spa Room.*/i,'').trim();
     }
+    if (client || treatRaw) results.push({ id: Date.now()+Math.random(), date: currentDate, treatment, client, amount, tips: tip > 0 ? tip : '', ocr: true });
   }
   return results;
 }
 
-function normTreatment(name) {
-  const n = (name||'').toLowerCase();
-  if (n.includes('intuitive') && (n.includes('80')||n.includes('80min'))) return 'Gwinganna Intuitive Massage 80min';
+function normTreatment(s) {
+  const n = (s||'').toLowerCase();
+  if (n.includes('intuitive') && n.includes('80')) return 'Gwinganna Intuitive Massage 80min';
   if (n.includes('intuitive') && n.includes('50')) return 'Gwinganna Intuitive Massage 50min';
   if (n.includes('intuitive')) return 'Gwinganna Intuitive Massage 80min';
-  if (n.includes('deep tissue') && n.includes('relaxation') && n.includes('80')) return 'Deep Tissue - Relaxation 80min';
-  if (n.includes('deep tissue') && n.includes('relaxation') && n.includes('50')) return 'Deep Tissue - Relaxation 50min';
+  if (n.includes('relaxation') && n.includes('80')) return 'Deep Tissue - Relaxation 80min';
+  if (n.includes('relaxation') && n.includes('50')) return 'Deep Tissue - Relaxation 50min';
   if ((n.includes('deep tissue')||n.includes('remedial')) && n.includes('80')) return 'Deep Tissue - Remedial Massage 80min';
   if ((n.includes('deep tissue')||n.includes('remedial')) && n.includes('50')) return 'Deep Tissue - Remedial Massage 50min';
   if (n.includes('deep tissue')) return 'Deep Tissue - Remedial Massage 80min';
@@ -616,36 +472,27 @@ function normTreatment(name) {
   if (n.includes('classic') && n.includes('50')) return 'Gwinganna Classic Massage 50min';
   if (n.includes('classic')) return 'Gwinganna Classic Massage 80min';
   if (n.includes('foot')) return 'Foot Therapy 50min';
-  for (const t of TREATMENTS) { if (n.includes(t.toLowerCase().split(' ').slice(0,2).join(' '))) return t; }
-  return name || 'Other';
+  return s || 'Other';
 }
 function lookupRate(t) { return RATES[normTreatment(t||'')] || 0; }
-
 function setStatus(show, txt='') {
   document.getElementById('status-bar').classList.toggle('visible', show);
   if (txt) document.getElementById('status-text').textContent = txt;
 }
 
 // ── Sessions ──
-function addSession() {
-  sessions.push({ id:Date.now()+Math.random(), date:'', treatment:'', client:'', amount:'', tips:'', ocr:false });
-  renderSessions();
-}
+function addSession() { sessions.push({id:Date.now()+Math.random(),date:'',treatment:'',client:'',amount:'',tips:'',ocr:false}); renderSessions(); }
 function removeSession(id) { sessions = sessions.filter(s=>s.id!==id); renderSessions(); }
-
 function renderSessions() {
-  const list = document.getElementById('sessions-list');
-  list.innerHTML = '';
+  const list = document.getElementById('sessions-list'); list.innerHTML = '';
   sessions.forEach(s => {
-    const div = document.createElement('div');
-    div.className = 'session-row';
+    const div = document.createElement('div'); div.className = 'session-row';
     const opts = TREATMENTS.map(t=>`<option value="${t}" ${s.treatment===t?'selected':''}>${t}</option>`).join('');
     const f = s.ocr ? 'ocr-filled' : '';
     div.innerHTML = `
       <input type="date" class="${f}" value="${s.date}" onchange="upd(${s.id},'date',this.value)">
       <select class="${f}" onchange="upd(${s.id},'treatment',this.value);autoRate(${s.id},this.value)">
-        <option value="">— Select —</option>${opts}
-      </select>
+        <option value="">— Select —</option>${opts}</select>
       <input type="text" class="${f}" placeholder="Client name" value="${s.client}" onchange="upd(${s.id},'client',this.value)">
       <input type="number" class="${f}" placeholder="$" step="0.01" value="${s.amount}" onchange="upd(${s.id},'amount',this.value)">
       <input type="number" class="${f}" placeholder="$" step="0.01" value="${s.tips}" onchange="upd(${s.id},'tips',this.value)">
@@ -667,13 +514,12 @@ function updateTotals(){
 
 // ── Invoice ──
 function fmt(d){if(!d)return'';const[y,m,day]=d.split('-');return`${parseInt(day)}/${parseInt(m)}/${y.slice(2)}`;}
-
 function generateInvoice(){
-  if(!sessions.filter(s=>s.client).length){alert('Please add at least one session with a client name.');return;}
+  if(!sessions.filter(s=>s.client).length){alert('Please extract sessions first.');return;}
   document.getElementById('p-inv-num').textContent=document.getElementById('inv-num').value;
   document.getElementById('p-inv-date').textContent=fmt(document.getElementById('inv-date').value);
-  const tbody=document.getElementById('p-rows');
-  tbody.innerHTML='';let sv=0,tp=0,lastDate=null;
+  const tbody=document.getElementById('p-rows');tbody.innerHTML='';
+  let sv=0,tp=0,lastDate=null;
   sessions.filter(s=>s.client||s.treatment).forEach(s=>{
     const a=parseFloat(s.amount)||0,t=parseFloat(s.tips)||0;sv+=a;tp+=t;
     const tr=document.createElement('tr');
@@ -699,12 +545,11 @@ function openGmail(){
   const invNum=document.getElementById('inv-num').value;
   const d=document.getElementById('inv-date').value?new Date(document.getElementById('inv-date').value):new Date();
   const dateStr=d.toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'});
-  let sv=0,tp=0;
-  sessions.filter(s=>s.client||s.treatment).forEach(s=>{sv+=parseFloat(s.amount)||0;tp+=parseFloat(s.tips)||0;});
+  let sv=0,tp=0;sessions.filter(s=>s.client||s.treatment).forEach(s=>{sv+=parseFloat(s.amount)||0;tp+=parseFloat(s.tips)||0;});
   const grand=(sv+tp).toFixed(2);
-  const subject=`Invoice #${invNum} – Yusuke Komiya – ${dateStr}`;
+  const subj=`Invoice #${invNum} – Yusuke Komiya – ${dateStr}`;
   const body=`Hello Accounts Team,\n\nPlease find attached Invoice #${invNum} dated ${dateStr} for massage therapy services.\n\nTotal amount payable: $${grand}\n\nPlease process payment to:\nAccount Name: Yusuke Komiya\nBank: Westpac\nBSB: 734-279\nAccount No: 613009\n\nPlease don't hesitate to contact me if you have any questions.\n\nKind regards,\nYusuke Komiya`;
-  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent('accounts@gwinganna.com')}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,'_blank');
+  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent('accounts@gwinganna.com')}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
   showToast('Gmail draft opened — attach your PDF and send!');
   return false;
 }
@@ -712,6 +557,7 @@ function openGmail(){
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
 
 addSession(); addSession();
+window.onload = initGapi;
 </script>
 </body>
 </html>
