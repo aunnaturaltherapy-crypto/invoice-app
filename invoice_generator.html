@@ -141,6 +141,16 @@
     </div>
   </div>
 
+  <!-- Anthropic API Key -->
+  <div class="card no-print">
+    <div class="card-title">🔑 Anthropic API Key <span style="font-size:.75rem;font-weight:400;font-family:'DM Sans',sans-serif;color:#aaa;margin-left:4px;">for accurate photo scanning (~$0.01/week)</span></div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <input type="password" id="api-key" placeholder="sk-ant-api03-…" style="flex:1;font-family:'DM Mono',monospace;font-size:.8rem;">
+      <button class="btn btn-outline btn-sm" onclick="saveApiKey()">Save</button>
+    </div>
+    <p style="font-size:.75rem;color:var(--ink-soft);margin-top:6px;">Get a free key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent);">console.anthropic.com</a> → API Keys. Stored in your browser only.</p>
+  </div>
+
   <!-- Step 2: Pick photos -->
   <div class="card no-print">
     <div class="card-title">📸 Step 2 — Pick Your Schedule Photos</div>
@@ -281,6 +291,8 @@ let accessToken = null;
 let gapiReady = false;
 
 document.getElementById('inv-date').valueAsDate = new Date();
+const savedKey = sessionStorage.getItem('anthropic_key');
+if (savedKey) document.getElementById('api-key').value = savedKey;
 
 // ── Google Auth (Google Identity Services) ──
 let tokenClient = null;
@@ -398,29 +410,82 @@ async function ocrImage(img) {
 }
 
 async function runOCR() {
-  if (!accessToken) { showToast('Please sign in first.'); return; }
   if (!uploadedImages.length) return;
+  const apiKey = sessionStorage.getItem('anthropic_key');
+  if (!apiKey) { alert('Please enter your Anthropic API key first.'); return; }
+
   document.getElementById('scan-btn').disabled = true;
   sessions = [];
-  let allText = '';
-  for (let i = 0; i < uploadedImages.length; i++) {
-    const img = uploadedImages[i];
-    setStatus(true, `Reading photo ${i+1} of ${uploadedImages.length}: ${img.name}…`);
-    try {
-      const text = await ocrImage(img);
-      allText += `\n\n=== ${img.name} ===\n${text}`;
-      img.ocrDone = true;
-      renderThumbs();
-    } catch(e) { showToast(`Could not read ${img.name}: ${e.message}`); }
+  setStatus(true, `Scanning ${uploadedImages.length} photo(s) with Claude AI…`);
+
+  try {
+    const content = [];
+    uploadedImages.forEach((img, i) => {
+      content.push({ type: 'text', text: `Schedule photo ${i+1} (${img.name}):` });
+      content.push({ type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.base64 } });
+    });
+
+    content.push({ type: 'text', text: `These are printed daily schedule sheets from Gwinganna Lifestyle Retreat spa for massage therapist Yusuke Komiya.
+
+Extract every appointment from all photos. For each return JSON with:
+- date: YYYY-MM-DD (from sheet header e.g. "Saturday, 21 March 2026" → "2026-03-21")
+- treatment: full name with duration (e.g. "Lymphatic Drainage 80min", "Gwinganna Intuitive Massage 80min")
+- client: client full name
+- amount: service fee using these rates:
+  Gwinganna Intuitive Massage 80min=101, 50min=70,
+  Deep Tissue - Remedial Massage 80min=85, 50min=58.50,
+  Deep Tissue - Relaxation 80min=85, 50min=58.50,
+  Lymphatic Drainage 80min=85, Shiatsu 80min=85, 50min=58.50,
+  Gwinganna Classic Massage 80min=63.89, 50min=44.10,
+  Ayurveda Aromatherapy Massage 80min=85, Foot Therapy 50min=58.50
+- tip: tip amount as a number (look carefully for handwritten tip amounts next to client signatures, 0 if none)
+
+Return ONLY a raw JSON array, no markdown.
+Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"Sarah-Ann Taylor","amount":85,"tip":10}]` });
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content }]
+      })
+    });
+
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error?.message || `API error ${resp.status}`); }
+    const data = await resp.json();
+    const text = data.content.map(b => b.text||'').join('').replace(/```json|```/g,'').trim();
+    const extracted = JSON.parse(text);
+
+    if (!Array.isArray(extracted) || !extracted.length) throw new Error('No sessions found in photos.');
+
+    sessions = extracted.map(s => ({
+      id: Date.now()+Math.random(),
+      date: s.date||'',
+      treatment: normTreatment(s.treatment||''),
+      client: s.client||'',
+      amount: s.amount || lookupRate(s.treatment) || '',
+      tips: s.tip > 0 ? s.tip : '',
+      ocr: true
+    }));
+
+    uploadedImages.forEach(img => { img.ocrDone = true; });
+    renderThumbs();
+    renderSessions();
+    setStatus(false);
+    showToast(`✅ Extracted ${sessions.length} sessions from ${uploadedImages.length} photos!`);
+
+  } catch(e) {
+    setStatus(false);
+    alert('Scan error: ' + e.message);
   }
-  setStatus(true, 'Extracting sessions…');
-  sessions = parseScheduleText(allText);
-  renderSessions();
-  setStatus(false);
   document.getElementById('scan-btn').disabled = false;
-  sessions.length > 0
-    ? showToast(`✅ Extracted ${sessions.length} sessions from ${uploadedImages.length} photos — free!`)
-    : showToast('⚠️ No sessions found — check photos are clear and try again');
 }
 
 // ── Parse OCR text ──
@@ -619,6 +684,13 @@ function openGmail(){
   window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent('accounts@gwinganna.com')}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
   showToast('Gmail draft opened — attach your PDF and send!');
   return false;
+}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key').value.trim();
+  if (!key) { showToast('Please paste your API key first.'); return; }
+  sessionStorage.setItem('anthropic_key', key);
+  showToast('API key saved ✓');
 }
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
