@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yusuke Komiya – Invoice Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+  :root {
+    --bg:#f5f2ec; --surface:#fff; --ink:#1a1a1a; --ink-soft:#666;
+    --accent:#2c5f2e; --accent-light:#e8f0e8; --border:#d8d2c8;
+    --danger:#c0392b; --shadow:0 2px 16px rgba(0,0,0,0.07); --radius:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+  header{background:var(--accent);color:white;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.15);}
+  header h1{font-family:'DM Serif Display',serif;font-size:1.4rem;font-weight:400;}
+  header .subtitle{font-size:.78rem;opacity:.7;font-family:'DM Mono',monospace;margin-top:2px;}
+  .free-badge{background:#27ae60;color:white;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.04em;margin-left:10px;vertical-align:middle;}
+  .app{max-width:920px;margin:0 auto;padding:28px 20px 80px;}
+  .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:20px;}
+  .card-title{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--accent);margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+
+  /* Setup */
+  .setup-steps{background:#f0f7ff;border:1.5px solid #b3d4f5;border-radius:10px;padding:16px 18px;font-size:.87rem;line-height:1.7;}
+  .setup-steps ol{padding-left:18px;margin:8px 0 12px;}
+  .setup-steps li{margin-bottom:4px;}
+  .setup-steps code{background:#e3edf7;padding:1px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:.82rem;}
+  .setup-steps a{color:#1a73e8;}
+  .gid-row{display:flex;gap:8px;margin-top:10px;}
+  .gid-row input{flex:1;padding:8px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:.83rem;font-family:'DM Mono',monospace;}
+  .connected-badge{display:none;align-items:center;gap:8px;padding:9px 14px;background:#e8f5e9;border-radius:8px;font-size:.87rem;color:#2c5f2e;font-weight:600;margin-top:10px;}
+  .connected-badge.visible{display:flex;}
+
+  /* Upload */
+  .upload-source-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+  .upload-divider{font-size:.8rem;color:#bbb;font-weight:500;padding:0 4px;}
+  .btn-drive{background:#fff;color:#3c4043;border:1.5px solid #dadce0;display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
+  .btn-drive:hover{background:#f1f8ff;border-color:#4285f4;}
+  .btn-drive:disabled{opacity:.45;cursor:not-allowed;}
+  .upload-zone{border:2px dashed var(--border);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:#fafaf8;position:relative;}
+  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-light);}
+  .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .upload-icon{font-size:2rem;margin-bottom:8px;}
+  .upload-zone p{color:var(--ink-soft);font-size:.88rem;}
+  .upload-zone strong{color:var(--accent);}
+  .thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+  .thumb{position:relative;width:88px;height:88px;border-radius:8px;overflow:hidden;border:2px solid var(--border);flex-shrink:0;}
+  .thumb img{width:100%;height:100%;object-fit:cover;}
+  .thumb .remove-img{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .thumb .src-badge{position:absolute;bottom:3px;left:3px;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;}
+  .thumb .src-badge.drive{background:#4285f4;}
+  .thumb .src-badge.local{background:#888;}
+  .thumb .ocr-ok{position:absolute;top:3px;left:3px;font-size:14px;}
+
+  /* Status */
+  .status-bar{display:none;align-items:center;gap:12px;padding:11px 15px;background:var(--accent-light);border-radius:8px;margin-top:12px;font-size:.87rem;color:var(--accent);font-weight:500;}
+  .status-bar.visible{display:flex;}
+  .spinner{width:17px;height:17px;border:2.5px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .scan-btn{margin-top:14px;display:flex;align-items:center;gap:10px;}
+
+  /* Sessions */
+  .sessions-header{display:grid;grid-template-columns:105px 1fr 175px 80px 80px 36px;gap:8px;font-size:.71rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;}
+  .session-row{display:grid;grid-template-columns:105px 1fr 175px 80px 80px 36px;gap:8px;align-items:center;margin-bottom:7px;animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-3px);}to{opacity:1;transform:none;}}
+  label{display:block;font-size:.78rem;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;}
+  input,select{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--ink);background:white;transition:border-color .15s;}
+  input:focus,select:focus{outline:none;border-color:var(--accent);}
+  .ocr-filled{border-color:#4285f4 !important;background:#f0f7ff !important;}
+  .row{display:grid;gap:14px;grid-template-columns:1fr 1fr;}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;}
+  .btn-primary{background:var(--accent);color:white;}
+  .btn-primary:hover{background:#234e25;transform:translateY(-1px);}
+  .btn-outline{background:transparent;color:var(--accent);border:1.5px solid var(--accent);}
+  .btn-outline:hover{background:var(--accent-light);}
+  .btn-danger{background:transparent;color:var(--danger);border:none;padding:6px;border-radius:6px;font-size:.8rem;}
+  .btn-danger:hover{background:#fef0f0;}
+  .btn-sm{padding:8px 14px;font-size:.82rem;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none !important;}
+  .btn-gmail{background:#fff;color:#3c4043;border:1.5px solid #dadce0;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;text-decoration:none;}
+  .btn-gmail:hover{background:#fce8e6;border-color:#ea4335;color:#c5221f;}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center;}
+  .totals-box{background:var(--accent-light);border-radius:10px;padding:16px 20px;margin-top:16px;display:flex;justify-content:space-around;align-items:center;flex-wrap:wrap;gap:12px;}
+  .t-item{text-align:center;}
+  .t-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);}
+  .t-val{font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:500;color:var(--accent);margin-top:3px;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#222;color:white;padding:12px 22px;border-radius:30px;font-size:.88rem;transition:transform .3s ease;z-index:999;pointer-events:none;}
+  .toast.show{transform:translateX(-50%) translateY(0);}
+
+  /* Invoice print */
+  @media print{body{background:white;}.no-print{display:none !important;}.app{padding:0;max-width:100%;}.card{box-shadow:none;border-radius:0;padding:0;margin:0;}#invoice-preview{display:block !important;padding:20px;}}
+  #invoice-preview{display:none;}
+  .inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;}
+  .inv-title{font-family:'DM Serif Display',serif;font-size:2.2rem;color:var(--accent);line-height:1;}
+  .inv-subtitle{font-size:.85rem;color:#888;margin-top:5px;}
+  .inv-meta{text-align:right;font-size:.88rem;line-height:1.8;}
+  .inv-num{font-family:'DM Mono',monospace;font-size:1rem;font-weight:600;}
+  .inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;}
+  .inv-party-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#aaa;margin-bottom:6px;}
+  .inv-party-name{font-weight:600;font-size:1rem;margin-bottom:3px;}
+  .inv-party-detail{font-size:.85rem;color:#555;line-height:1.6;}
+  .inv-table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.88rem;}
+  .inv-table th{background:var(--accent);color:white;padding:9px 11px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+  .inv-table th.num,.inv-table td.num{text-align:right;}
+  .inv-table td{padding:8px 11px;border-bottom:1px solid #ece9e2;}
+  .inv-table tr:nth-child(even) td{background:#faf9f6;}
+  .num{text-align:right;font-family:'DM Mono',monospace;}
+  .date-cell{color:#444;font-size:.82rem;}
+  .inv-totals-wrap{display:flex;justify-content:flex-end;margin-bottom:24px;}
+  .inv-totals-table{border-collapse:collapse;min-width:280px;}
+  .inv-totals-table td{padding:6px 12px;font-size:.9rem;}
+  .inv-totals-table .sub{color:#666;}
+  .inv-totals-table .grand td{font-weight:700;font-size:1.05rem;border-top:2px solid var(--accent);padding-top:10px;color:var(--accent);}
+  .inv-footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;padding-top:16px;border-top:1px solid #ddd;}
+  .bank-box{background:var(--accent-light);border-radius:8px;padding:14px 16px;font-size:.85rem;line-height:1.8;}
+  .bank-box-title{font-weight:700;color:var(--accent);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+  .inv-no-gst{font-size:.8rem;color:#999;font-style:italic;}
+  .inv-thankyou{font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--accent);margin-top:16px;}
+</style>
+</head>
+<body>
+
+<header class="no-print">
+  <div>
+    <h1>📋 Invoice Generator <span class="free-badge">100% FREE</span></h1>
+    <div class="subtitle">Gwinganna Lifestyle Retreat · Yusuke Komiya · Google OCR powered</div>
+  </div>
+</header>
+
+<div class="app">
+<div id="form-section">
+
+  <!-- Google Setup -->
+  <div class="card no-print">
+    <div class="card-title">
+      <svg width="18" height="18" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+      Google Account Setup
+      <span style="font-size:.72rem;font-weight:400;font-family:'DM Sans',sans-serif;color:#aaa;margin-left:4px;">one-time only</span>
+    </div>
+
+    <div class="setup-steps">
+      <strong>This app uses Google Drive's free OCR — completely free, no API costs ever.</strong><br>
+      You need a free Google OAuth Client ID (takes ~3 minutes, one time only):
+      <ol>
+        <li>Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → create or select a project</li>
+        <li>Search and enable: <code>Google Drive API</code> and <code>Google Picker API</code></li>
+        <li>Go to <strong>Credentials → + Create Credentials → OAuth 2.0 Client ID</strong></li>
+        <li>Application type: <strong>Web application</strong></li>
+        <li>Under <strong>Authorised JavaScript origins</strong> add the address bar URL of this HTML file (e.g. <code>file://</code> or your local server address)</li>
+        <li>Copy the <strong>Client ID</strong> and paste below</li>
+      </ol>
+      <div class="gid-row">
+        <input type="text" id="google-client-id" placeholder="xxxxxxxxxx-xxxx.apps.googleusercontent.com">
+        <button class="btn btn-primary btn-sm" onclick="saveAndConnect()">Connect Google</button>
+      </div>
+    </div>
+    <div class="connected-badge" id="connected-badge">
+      ✅ Connected as <span id="connected-email" style="font-weight:400;margin-left:4px;"></span>
+      <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- Upload Photos -->
+  <div class="card no-print">
+    <div class="card-title">📸 Schedule Photos</div>
+    <div class="upload-source-row">
+      <button class="btn-drive" id="drive-picker-btn" onclick="openDrivePicker()" disabled>
+        <svg width="16" height="16" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+        Pick from Google Drive
+      </button>
+      <span class="upload-divider">or</span>
+      <span style="font-size:.82rem;color:var(--ink-soft);">upload from computer below</span>
+    </div>
+    <div class="upload-zone" id="drop-zone">
+      <input type="file" id="img-input" multiple accept="image/*" onchange="handleLocalFiles(this.files)">
+      <div class="upload-icon">🗓️</div>
+      <p><strong>Drag & drop</strong> schedule photos here, or click to browse</p>
+      <p style="margin-top:5px;font-size:.79rem;color:#aaa;">JPG, PNG · one per day · multiple OK</p>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+
+    <div id="status-bar" class="status-bar">
+      <div class="spinner"></div>
+      <span id="status-text">Reading text from photos…</span>
+    </div>
+
+    <div class="scan-btn">
+      <button class="btn btn-primary" id="scan-btn" onclick="runOCR()" disabled>🔍 Read & Extract Sessions (Free)</button>
+      <span style="font-size:.82rem;color:var(--ink-soft)" id="img-count"></span>
+    </div>
+  </div>
+
+  <!-- Invoice Details -->
+  <div class="card no-print">
+    <div class="card-title">🧾 Invoice Details</div>
+    <div class="row">
+      <div><label>Invoice Number</label><input type="number" id="inv-num" value="154"></div>
+      <div><label>Invoice Date</label><input type="date" id="inv-date"></div>
+    </div>
+  </div>
+
+  <!-- Sessions -->
+  <div class="card no-print">
+    <div class="card-title">💆 Sessions
+      <span style="font-size:.75rem;font-family:'DM Sans',sans-serif;font-weight:400;color:#aaa;margin-left:4px;">(blue = OCR-extracted, editable)</span>
+    </div>
+    <div class="sessions-header">
+      <div>Date</div><div>Treatment</div><div>Client</div><div>Amount $</div><div>Tips $</div><div></div>
+    </div>
+    <div id="sessions-list"></div>
+    <div class="actions">
+      <button class="btn btn-outline btn-sm" onclick="addSession()">+ Add Row</button>
+    </div>
+    <div class="totals-box">
+      <div class="t-item"><div class="t-label">Sessions</div><div class="t-val" id="total-count">0</div></div>
+      <div class="t-item"><div class="t-label">Services</div><div class="t-val" id="total-services">$0.00</div></div>
+      <div class="t-item"><div class="t-label">Tips</div><div class="t-val" id="total-tips">$0.00</div></div>
+      <div class="t-item"><div class="t-label">Grand Total</div><div class="t-val" id="total-grand">$0.00</div></div>
+    </div>
+  </div>
+
+  <div class="actions no-print" style="justify-content:flex-end;">
+    <button class="btn btn-primary" onclick="generateInvoice()" style="padding:12px 28px;font-size:.95rem;">📄 Preview Invoice</button>
+  </div>
+
+</div>
+
+<!-- Invoice Preview -->
+<div class="card" id="invoice-preview">
+  <div class="inv-header">
+    <div><div class="inv-title">INVOICE</div><div class="inv-subtitle">Massage Therapy Services</div></div>
+    <div class="inv-meta">
+      <div class="inv-num">No. <span id="p-inv-num"></span></div>
+      <div>Date: <span id="p-inv-date"></span></div>
+    </div>
+  </div>
+  <div class="inv-parties">
+    <div>
+      <div class="inv-party-label">Billed To</div>
+      <div class="inv-party-name">Gwinganna Lifestyle Retreat</div>
+      <div class="inv-party-detail">192 Syndicate Road<br>Tallebudgera, Qld 4228<br>Ph: (07) 5589-5002</div>
+    </div>
+    <div>
+      <div class="inv-party-label">From</div>
+      <div class="inv-party-name">Yusuke Komiya</div>
+      <div class="inv-party-detail">61/21 Leviathan Drive<br>Mudgeeraba 4213<br>ABN: 4364 2397 572</div>
+    </div>
+  </div>
+  <table class="inv-table">
+    <thead>
+      <tr>
+        <th style="width:88px">Date</th><th>Treatment</th><th>Client</th>
+        <th class="num" style="width:82px">Amount</th><th class="num" style="width:72px">Tips</th>
+      </tr>
+    </thead>
+    <tbody id="p-rows"></tbody>
+  </table>
+  <div class="inv-totals-wrap">
+    <table class="inv-totals-table">
+      <tr class="sub"><td>Services Total</td><td class="num"><span id="p-total-services"></span></td></tr>
+      <tr class="sub"><td>Tips Total</td><td class="num"><span id="p-total-tips"></span></td></tr>
+      <tr class="grand"><td>Total Payable</td><td class="num"><span id="p-grand-total"></span></td></tr>
+    </table>
+  </div>
+  <div class="inv-footer-grid">
+    <div>
+      <div class="inv-no-gst">Supplier is not Registered for GST</div>
+      <div class="inv-thankyou">Thank you</div>
+    </div>
+    <div class="bank-box">
+      <div class="bank-box-title">Pay by Electronic Funds Transfer</div>
+      Account Name: Yusuke Komiya<br>Bank: Westpac<br>BSB No: 734-279<br>Account No: 613009
+    </div>
+  </div>
+  <div class="actions no-print" style="margin-top:24px;justify-content:center;gap:14px;">
+    <button class="btn btn-outline" onclick="editInvoice()">✏️ Edit</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+    <a class="btn-gmail" href="#" onclick="return openGmail()">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.907 1.528-1.148C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/></svg>
+      Draft Gmail
+    </a>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://apis.google.com/js/api.js"></script>
+<script>
+// ── Treatment rates ──
+const RATES = {
+  'Gwinganna Intuitive Massage 80min':101,'Gwinganna Intuitive Massage 50min':70,
+  'Gwinganna Classic Massage 80min':63.89,'Gwinganna Classic Massage 50min':44.10,
+  'Deep Tissue - Remedial Massage 80min':85,'Deep Tissue - Remedial Massage 50min':58.50,
+  'Deep Tissue - Relaxation 80min':85,'Deep Tissue - Relaxation 50min':58.50,
+  'Lymphatic Drainage 80min':85,'Shiatsu 80min':85,'Shiatsu 50min':58.50,
+  'Ayurveda Aromatherapy Massage 80min':85,'Ayurveda Aromatherapy Massage 50min':58.50,
+  'Foot Therapy 50min':58.50,'Other':0
+};
+const TREATMENTS = Object.keys(RATES);
+
+let sessions = [];
+let uploadedImages = []; // {dataUrl, base64, mimeType, name, fromDrive, fileId}
+let googleClientId = localStorage.getItem('google_client_id') || '';
+let accessToken = null;
+let gapiReady = false;
+
+document.getElementById('inv-date').valueAsDate = new Date();
+if (googleClientId) {
+  document.getElementById('google-client-id').value = googleClientId;
+  loadGapi();
+}
+
+// ── Google Auth ──
+function saveAndConnect() {
+  googleClientId = document.getElementById('google-client-id').value.trim();
+  if (!googleClientId) { alert('Please paste your Google Client ID.'); return; }
+  localStorage.setItem('google_client_id', googleClientId);
+  loadGapi();
+}
+
+function loadGapi() {
+  gapi.load('auth2:picker:client', () => {
+    gapi.auth2.init({ client_id: googleClientId, scope: 'https://www.googleapis.com/auth/drive' })
+      .then(() => {
+        gapiReady = true;
+        const auth = gapi.auth2.getAuthInstance();
+        if (auth.isSignedIn.get()) {
+          onSignedIn(auth.currentUser.get());
+        }
+        // Auto-sign-in silently if possible
+        auth.signIn({ prompt: 'none' }).then(u => onSignedIn(u)).catch(() => {});
+      })
+      .catch(e => alert('Google init error: ' + (e.error || e.message || JSON.stringify(e))));
+  });
+}
+
+async function ensureSignedIn() {
+  if (!gapiReady) { alert('Please connect Google first.'); return false; }
+  const auth = gapi.auth2.getAuthInstance();
+  if (!auth.isSignedIn.get()) {
+    try {
+      const user = await auth.signIn({ scope: 'https://www.googleapis.com/auth/drive' });
+      onSignedIn(user);
+    } catch(e) { return false; }
+  }
+  return true;
+}
+
+function onSignedIn(user) {
+  accessToken = user.getAuthResponse().access_token;
+  const profile = user.getBasicProfile();
+  document.getElementById('connected-badge').classList.add('visible');
+  document.getElementById('connected-email').textContent = profile.getEmail();
+  document.getElementById('drive-picker-btn').disabled = false;
+}
+
+function signOut() {
+  gapi.auth2.getAuthInstance().signOut().then(() => {
+    accessToken = null;
+    document.getElementById('connected-badge').classList.remove('visible');
+    document.getElementById('drive-picker-btn').disabled = true;
+    showToast('Signed out of Google');
+  });
+}
+
+// ── Drive Picker ──
+async function openDrivePicker() {
+  const ok = await ensureSignedIn();
+  if (!ok) return;
+  const picker = new google.picker.PickerBuilder()
+    .addView(new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES).setIncludeFolders(true))
+    .setOAuthToken(accessToken)
+    .setCallback(pickerCallback)
+    .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+    .setTitle('Select your daily schedule photos')
+    .build();
+  picker.setVisible(true);
+}
+
+async function pickerCallback(data) {
+  if (data.action !== google.picker.Action.PICKED) return;
+  setStatus(true, `Loading ${data.docs.length} file(s) from Google Drive…`);
+  for (const doc of data.docs) {
+    try {
+      const resp = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const blob = await resp.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: doc.mimeType||'image/jpeg', name: doc.name, fromDrive: true, fileId: doc.id });
+      renderThumbs();
+    } catch(e) { console.error('Load error', doc.name, e); }
+  }
+  setStatus(false);
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+
+// ── Local upload ──
+function handleLocalFiles(files) {
+  Array.from(files).forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      const dataUrl = e.target.result;
+      uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: f.type||'image/jpeg', name: f.name, fromDrive: false });
+      renderThumbs();
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+function renderThumbs() {
+  const c = document.getElementById('thumbs');
+  c.innerHTML = '';
+  uploadedImages.forEach((img, i) => {
+    const d = document.createElement('div');
+    d.className = 'thumb';
+    d.innerHTML = `<img src="${img.dataUrl}" alt="${img.name}">
+      <div class="src-badge ${img.fromDrive?'drive':'local'}">${img.fromDrive?'Drive':'Local'}</div>
+      ${img.ocrDone ? '<div class="ocr-ok">✅</div>' : ''}
+      <button class="remove-img" onclick="removeImg(${i})">✕</button>`;
+    c.appendChild(d);
+  });
+  const n = uploadedImages.length;
+  document.getElementById('img-count').textContent = n > 0 ? `${n} photo${n>1?'s':''} ready` : '';
+  document.getElementById('scan-btn').disabled = n === 0;
+}
+function removeImg(i) { uploadedImages.splice(i, 1); renderThumbs(); }
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleLocalFiles(e.dataTransfer.files); });
+
+// ── Google Drive OCR (FREE) ──
+// Strategy: upload image to Drive with OCR conversion → get Google Doc → read text → delete temp file
+async function ocrImageWithDrive(img) {
+  const ok = await ensureSignedIn();
+  if (!ok) throw new Error('Not signed in to Google');
+
+  // Step 1: Upload image to Drive with OCR → creates a Google Doc
+  setStatus(true, `Reading text from ${img.name}…`);
+  const metadata = { name: `_ocr_temp_${Date.now()}`, mimeType: 'application/vnd.google-apps.document' };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  // Convert base64 to blob
+  const byteStr = atob(img.base64);
+  const arr = new Uint8Array(byteStr.length);
+  for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+  form.append('file', new Blob([arr], { type: img.mimeType }));
+
+  const uploadResp = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form }
+  );
+  if (!uploadResp.ok) throw new Error('Drive upload failed: ' + uploadResp.status);
+  const { id: docId } = await uploadResp.json();
+
+  // Step 2: Export Google Doc as plain text
+  const exportResp = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=text/plain`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const text = await exportResp.text();
+
+  // Step 3: Delete temp file (cleanup)
+  fetch(`https://www.googleapis.com/drive/v3/files/${docId}`, {
+    method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` }
+  });
+
+  return text;
+}
+
+async function runOCR() {
+  if (!uploadedImages.length) return;
+  const ok = await ensureSignedIn();
+  if (!ok) { alert('Please connect your Google account first.'); return; }
+
+  document.getElementById('scan-btn').disabled = true;
+  sessions = [];
+  let allText = '';
+
+  for (let i = 0; i < uploadedImages.length; i++) {
+    const img = uploadedImages[i];
+    setStatus(true, `Reading photo ${i+1} of ${uploadedImages.length}: ${img.name}…`);
+    try {
+      const text = await ocrImageWithDrive(img);
+      allText += '\n\n--- IMAGE: ' + img.name + ' ---\n' + text;
+      img.ocrDone = true;
+      renderThumbs();
+    } catch(e) {
+      showToast(`⚠️ Could not read ${img.name}: ${e.message}`);
+    }
+  }
+
+  setStatus(true, 'Parsing session data…');
+  const parsed = parseScheduleText(allText);
+  sessions = parsed;
+  renderSessions();
+  setStatus(false);
+
+  if (sessions.length > 0) {
+    showToast(`✅ Extracted ${sessions.length} sessions — 100% free!`);
+  } else {
+    showToast('⚠️ No sessions found — check the text was readable');
+  }
+  document.getElementById('scan-btn').disabled = false;
+}
+
+// ── Parse OCR text into sessions ──
+function parseScheduleText(text) {
+  const results = [];
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Extract date from image header lines like "Yusuke Komiya - Saturday, 21 March 2026"
+  // or "Daily Schedule - Yusuke Komiya" followed by a date line
+  let currentDate = '';
+
+  // Time pattern: 11:00 AM, 12:30 PM etc
+  const timeRe = /(\d{1,2}:\d{2}\s*[AP]M)/i;
+  // Tip pattern: $ followed by digits
+  const tipRe = /\$\s*(\d+)/;
+  // Date patterns
+  const dateRe = /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i;
+  const months = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Detect date line
+    const dm = line.match(dateRe);
+    if (dm) {
+      const day = dm[1].padStart(2,'0');
+      const month = String(months[dm[2].toLowerCase()]).padStart(2,'0');
+      const year = dm[3];
+      currentDate = `${year}-${month}-${day}`;
+      continue;
+    }
+
+    // Detect appointment line (has a time)
+    const tm = line.match(timeRe);
+    if (tm) {
+      const time = tm[1];
+      // Treatment: text after the time
+      let rest = line.slice(line.indexOf(tm[0]) + tm[0].length).trim();
+      // Remove Spa Room references
+      rest = rest.replace(/Spa Room\s*#?\s*\d+/i, '').trim();
+
+      const treatment = normTreatment(rest);
+      const amount = lookupRate(treatment);
+
+      // Look ahead for client name and tip (next 1-3 lines)
+      let client = '';
+      let tip = 0;
+      for (let j = i+1; j < Math.min(i+5, lines.length); j++) {
+        const next = lines[j];
+        if (next.match(timeRe)) break; // next appointment
+        if (next.match(dateRe)) break;
+        // Tip line
+        const tipMatch = next.match(tipRe);
+        if (tipMatch) { tip = parseInt(tipMatch[1]); continue; }
+        // Notes line - skip
+        if (/^notes:/i.test(next)) continue;
+        // Spa Room line - skip
+        if (/spa room/i.test(next)) continue;
+        // First non-junk line after time = client name
+        if (!client && next.length > 2 && !/^\$/.test(next) && !/^(tip|signature)/i.test(next)) {
+          client = next.replace(/Spa Room.*/i,'').trim();
+        }
+      }
+
+      if (client || treatment) {
+        results.push({
+          id: Date.now() + Math.random(),
+          date: currentDate,
+          treatment,
+          client,
+          amount,
+          tips: tip > 0 ? tip : '',
+          ocr: true
+        });
+      }
+    }
+  }
+  return results;
+}
+
+function normTreatment(name) {
+  const n = (name||'').toLowerCase();
+  if (n.includes('intuitive') && (n.includes('80')||n.includes('80min'))) return 'Gwinganna Intuitive Massage 80min';
+  if (n.includes('intuitive') && n.includes('50')) return 'Gwinganna Intuitive Massage 50min';
+  if (n.includes('intuitive')) return 'Gwinganna Intuitive Massage 80min';
+  if (n.includes('deep tissue') && n.includes('relaxation') && n.includes('80')) return 'Deep Tissue - Relaxation 80min';
+  if (n.includes('deep tissue') && n.includes('relaxation') && n.includes('50')) return 'Deep Tissue - Relaxation 50min';
+  if ((n.includes('deep tissue')||n.includes('remedial')) && n.includes('80')) return 'Deep Tissue - Remedial Massage 80min';
+  if ((n.includes('deep tissue')||n.includes('remedial')) && n.includes('50')) return 'Deep Tissue - Remedial Massage 50min';
+  if (n.includes('deep tissue')) return 'Deep Tissue - Remedial Massage 80min';
+  if (n.includes('lymphatic')) return 'Lymphatic Drainage 80min';
+  if (n.includes('shiatsu') && n.includes('50')) return 'Shiatsu 50min';
+  if (n.includes('shiatsu')) return 'Shiatsu 80min';
+  if (n.includes('ayurveda') && n.includes('50')) return 'Ayurveda Aromatherapy Massage 50min';
+  if (n.includes('ayurveda')) return 'Ayurveda Aromatherapy Massage 80min';
+  if (n.includes('classic') && n.includes('50')) return 'Gwinganna Classic Massage 50min';
+  if (n.includes('classic')) return 'Gwinganna Classic Massage 80min';
+  if (n.includes('foot')) return 'Foot Therapy 50min';
+  for (const t of TREATMENTS) { if (n.includes(t.toLowerCase().split(' ').slice(0,2).join(' '))) return t; }
+  return name || 'Other';
+}
+function lookupRate(t) { return RATES[normTreatment(t||'')] || 0; }
+
+function setStatus(show, txt='') {
+  document.getElementById('status-bar').classList.toggle('visible', show);
+  if (txt) document.getElementById('status-text').textContent = txt;
+}
+
+// ── Sessions ──
+function addSession() {
+  sessions.push({ id:Date.now()+Math.random(), date:'', treatment:'', client:'', amount:'', tips:'', ocr:false });
+  renderSessions();
+}
+function removeSession(id) { sessions = sessions.filter(s=>s.id!==id); renderSessions(); }
+
+function renderSessions() {
+  const list = document.getElementById('sessions-list');
+  list.innerHTML = '';
+  sessions.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'session-row';
+    const opts = TREATMENTS.map(t=>`<option value="${t}" ${s.treatment===t?'selected':''}>${t}</option>`).join('');
+    const f = s.ocr ? 'ocr-filled' : '';
+    div.innerHTML = `
+      <input type="date" class="${f}" value="${s.date}" onchange="upd(${s.id},'date',this.value)">
+      <select class="${f}" onchange="upd(${s.id},'treatment',this.value);autoRate(${s.id},this.value)">
+        <option value="">— Select —</option>${opts}
+      </select>
+      <input type="text" class="${f}" placeholder="Client name" value="${s.client}" onchange="upd(${s.id},'client',this.value)">
+      <input type="number" class="${f}" placeholder="$" step="0.01" value="${s.amount}" onchange="upd(${s.id},'amount',this.value)">
+      <input type="number" class="${f}" placeholder="$" step="0.01" value="${s.tips}" onchange="upd(${s.id},'tips',this.value)">
+      <button class="btn btn-danger" onclick="removeSession(${s.id})">✕</button>`;
+    list.appendChild(div);
+  });
+  updateTotals();
+}
+function upd(id,f,v){const s=sessions.find(s=>s.id===id);if(s){s[f]=v;s.ocr=false;}updateTotals();}
+function autoRate(id,t){const s=sessions.find(s=>s.id===id);if(s&&RATES[t]!==undefined){s.amount=RATES[t];renderSessions();}}
+function updateTotals(){
+  let sv=0,tp=0,ct=0;
+  sessions.forEach(s=>{const a=parseFloat(s.amount)||0,t=parseFloat(s.tips)||0;if(a>0){sv+=a;ct++;}tp+=t;});
+  document.getElementById('total-count').textContent=ct;
+  document.getElementById('total-services').textContent=`$${sv.toFixed(2)}`;
+  document.getElementById('total-tips').textContent=`$${tp.toFixed(2)}`;
+  document.getElementById('total-grand').textContent=`$${(sv+tp).toFixed(2)}`;
+}
+
+// ── Invoice ──
+function fmt(d){if(!d)return'';const[y,m,day]=d.split('-');return`${parseInt(day)}/${parseInt(m)}/${y.slice(2)}`;}
+
+function generateInvoice(){
+  if(!sessions.filter(s=>s.client).length){alert('Please add at least one session with a client name.');return;}
+  document.getElementById('p-inv-num').textContent=document.getElementById('inv-num').value;
+  document.getElementById('p-inv-date').textContent=fmt(document.getElementById('inv-date').value);
+  const tbody=document.getElementById('p-rows');
+  tbody.innerHTML='';let sv=0,tp=0,lastDate=null;
+  sessions.filter(s=>s.client||s.treatment).forEach(s=>{
+    const a=parseFloat(s.amount)||0,t=parseFloat(s.tips)||0;sv+=a;tp+=t;
+    const tr=document.createElement('tr');
+    const dd=s.date!==lastDate?fmt(s.date):'';if(s.date)lastDate=s.date;
+    tr.innerHTML=`<td class="date-cell">${dd}</td><td>${s.treatment||''}</td><td>${s.client||''}</td><td class="num">${a>0?a.toFixed(2):''}</td><td class="num">${t>0?'$'+t.toFixed(2):''}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('p-total-services').textContent=`$${sv.toFixed(2)}`;
+  document.getElementById('p-total-tips').textContent=`$${tp.toFixed(2)}`;
+  document.getElementById('p-grand-total').textContent=`$${(sv+tp).toFixed(2)}`;
+  document.getElementById('form-section').style.display='none';
+  document.getElementById('invoice-preview').style.display='block';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function editInvoice(){
+  document.getElementById('form-section').style.display='block';
+  document.getElementById('invoice-preview').style.display='none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── Gmail ──
+function openGmail(){
+  const invNum=document.getElementById('inv-num').value;
+  const d=document.getElementById('inv-date').value?new Date(document.getElementById('inv-date').value):new Date();
+  const dateStr=d.toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'});
+  let sv=0,tp=0;
+  sessions.filter(s=>s.client||s.treatment).forEach(s=>{sv+=parseFloat(s.amount)||0;tp+=parseFloat(s.tips)||0;});
+  const grand=(sv+tp).toFixed(2);
+  const subject=`Invoice #${invNum} – Yusuke Komiya – ${dateStr}`;
+  const body=`Hello Accounts Team,\n\nPlease find attached Invoice #${invNum} dated ${dateStr} for massage therapy services.\n\nTotal amount payable: $${grand}\n\nPlease process payment to:\nAccount Name: Yusuke Komiya\nBank: Westpac\nBSB: 734-279\nAccount No: 613009\n\nPlease don't hesitate to contact me if you have any questions.\n\nKind regards,\nYusuke Komiya`;
+  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent('accounts@gwinganna.com')}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,'_blank');
+  showToast('Gmail draft opened — attach your PDF and send!');
+  return false;
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
+
+addSession(); addSession();
+</script>
+</body>
+</html>
