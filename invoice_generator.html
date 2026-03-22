@@ -431,26 +431,92 @@ function parseScheduleText(text) {
   const dateRe = /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i;
   const months = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
   const tipRe = /\$\s*(\d+)/;
+  // Lines that are NOT client names
+  const skipLine = (s) => {
+    const l = s.toLowerCase();
+    return /^notes:/i.test(s) ||
+      /spa room/i.test(s) ||
+      /^(tip|signature|time|service|client|notes)/i.test(s) ||
+      /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(s) ||
+      /gwinganna lifestyle/i.test(s) ||
+      /daily schedule/i.test(s) ||
+      /yusuke komiya/i.test(s) ||
+      /^\d+mins?$/.test(s) ||   // "80mins" or "50min" alone on a line
+      /^\d+\s*mins?$/i.test(s) ||
+      /^(80min|50min|80mins|50mins)$/i.test(s) ||
+      s.length < 2;
+  };
+
   let currentDate = '';
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+
+    // Detect date
     const dm = line.match(dateRe);
-    if (dm) { currentDate = `${dm[3]}-${String(months[dm[2].toLowerCase()]).padStart(2,'0')}-${dm[1].padStart(2,'0')}`; continue; }
+    if (dm) {
+      currentDate = `${dm[3]}-${String(months[dm[2].toLowerCase()]).padStart(2,'0')}-${dm[1].padStart(2,'0')}`;
+      continue;
+    }
+
+    // Detect appointment line (has a time)
     const tm = line.match(timeRe);
     if (!tm) continue;
-    let treatRaw = line.slice(line.indexOf(tm[0]) + tm[0].length).trim().replace(/Spa Room\s*#?\s*\d+/i,'').trim();
+
+    // Treatment = text after the time on same line
+    let treatRaw = line.slice(line.indexOf(tm[0]) + tm[0].length).trim();
+    treatRaw = treatRaw.replace(/Spa Room\s*#?\s*\d+/i,'').trim();
+
+    // Next line might be continuation of treatment (e.g. "80mins" on next line)
+    // Check if next line looks like a duration — if so append to treatment and skip
+    let lookahead = i + 1;
+    if (lookahead < lines.length && /^\d+\s*mins?$/i.test(lines[lookahead])) {
+      treatRaw = treatRaw + ' ' + lines[lookahead];
+      lookahead++;
+    }
+
     const treatment = normTreatment(treatRaw);
     const amount = lookupRate(treatment);
+
+    // Now look for client name and tip in subsequent lines
     let client = '', tip = 0;
-    for (let j = i+1; j < Math.min(i+6, lines.length); j++) {
+    for (let j = lookahead; j < Math.min(lookahead + 6, lines.length); j++) {
       const next = lines[j];
       if (next.match(timeRe) || next.match(dateRe)) break;
-      if (/^notes:/i.test(next) || /spa room/i.test(next) || /^(tip|signature|time|service|client)\b/i.test(next)) continue;
+      if (skipLine(next)) continue;
+
+      // Check for tip — $ followed by digits
       const tipM = next.match(tipRe);
-      if (tipM) { tip = parseInt(tipM[1]); continue; }
-      if (!client && next.length > 1) client = next.replace(/Spa Room.*/i,'').trim();
+      if (tipM) {
+        tip = parseInt(tipM[1]);
+        continue;
+      }
+
+      // Also check for tip written as just digits on a line by itself after "Tip" label
+      // e.g. the printed schedule has "Tip" column header then the amount below
+      if (/^\d{1,3}$/.test(next) && !client) {
+        // Could be a tip amount like "10", "20", "50"
+        const possibleTip = parseInt(next);
+        if (possibleTip > 0 && possibleTip <= 500) { tip = possibleTip; continue; }
+      }
+
+      // First good line = client name
+      if (!client) {
+        client = next.replace(/Spa Room.*/i,'').trim();
+      }
     }
-    if (client || treatRaw) results.push({ id: Date.now()+Math.random(), date: currentDate, treatment, client, amount, tips: tip > 0 ? tip : '', ocr: true });
+
+    // Only add if we have something meaningful
+    if ((client && !skipLine(client)) || (treatRaw && treatRaw.length > 2)) {
+      results.push({
+        id: Date.now()+Math.random(),
+        date: currentDate,
+        treatment,
+        client: skipLine(client) ? '' : client,
+        amount,
+        tips: tip > 0 ? tip : '',
+        ocr: true
+      });
+    }
   }
   return results;
 }
