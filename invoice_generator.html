@@ -141,15 +141,7 @@
     </div>
   </div>
 
-  <!-- Anthropic API Key -->
-  <div class="card no-print">
-    <div class="card-title">🔑 Anthropic API Key <span style="font-size:.75rem;font-weight:400;font-family:'DM Sans',sans-serif;color:#aaa;margin-left:4px;">for accurate photo scanning (~$0.01/week)</span></div>
-    <div style="display:flex;gap:10px;align-items:center;">
-      <input type="password" id="api-key" placeholder="sk-ant-api03-…" style="flex:1;font-family:'DM Mono',monospace;font-size:.8rem;">
-      <button class="btn btn-outline btn-sm" onclick="saveApiKey()">Save</button>
-    </div>
-    <p style="font-size:.75rem;color:var(--ink-soft);margin-top:6px;">Get a free key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent);">console.anthropic.com</a> → API Keys. Stored in your browser only.</p>
-  </div>
+
 
   <!-- Step 2: Pick photos -->
   <div class="card no-print">
@@ -291,8 +283,7 @@ let accessToken = null;
 let gapiReady = false;
 
 document.getElementById('inv-date').valueAsDate = new Date();
-const savedKey = localStorage.getItem('anthropic_key');
-if (savedKey) document.getElementById('api-key').value = savedKey;
+
 
 // ── Google Auth (Google Identity Services) ──
 let tokenClient = null;
@@ -411,7 +402,7 @@ async function ocrImage(img) {
 
 async function runOCR() {
   if (!uploadedImages.length) return;
-  const apiKey = localStorage.getItem('anthropic_key');
+  const apiKey = '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';
   if (!apiKey) { alert('Please enter your Anthropic API key first.'); return; }
 
   document.getElementById('scan-btn').disabled = true;
@@ -684,13 +675,6 @@ function openGmail(){
   window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent('accounts@gwinganna.com')}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
   showToast('Gmail draft opened — attach your PDF and send!');
   return false;
-}
-
-function saveApiKey() {
-  const key = document.getElementById('api-key').value.trim();
-  if (!key) { showToast('Please paste your API key first.'); return; }
-  localStorage.setItem('anthropic_key', key);
-  showToast('API key saved ✓');
 }
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
