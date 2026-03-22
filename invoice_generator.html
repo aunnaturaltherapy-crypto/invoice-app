@@ -262,7 +262,7 @@
 
 <script>
 const CLIENT_ID = '955548089142-btns2vovejhn21uh3vacrlci3k19eqr8.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/drive';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
 const RATES = {
   'Gwinganna Intuitive Massage 80min':101,'Gwinganna Intuitive Massage 50min':70,
@@ -310,7 +310,7 @@ function signIn() {
       });
     }
   });
-  tokenClient.requestAccessToken({ prompt: 'consent' });
+  tokenClient.requestAccessToken({ prompt: '' });
 }
 
 function signOut() {
