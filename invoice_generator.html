@@ -291,7 +291,7 @@ let accessToken = null;
 let gapiReady = false;
 
 document.getElementById('inv-date').valueAsDate = new Date();
-const savedKey = sessionStorage.getItem('anthropic_key');
+const savedKey = localStorage.getItem('anthropic_key');
 if (savedKey) document.getElementById('api-key').value = savedKey;
 
 // ── Google Auth (Google Identity Services) ──
@@ -411,7 +411,7 @@ async function ocrImage(img) {
 
 async function runOCR() {
   if (!uploadedImages.length) return;
-  const apiKey = sessionStorage.getItem('anthropic_key');
+  const apiKey = localStorage.getItem('anthropic_key');
   if (!apiKey) { alert('Please enter your Anthropic API key first.'); return; }
 
   document.getElementById('scan-btn').disabled = true;
@@ -680,7 +680,7 @@ function openGmail(){
   let sv=0,tp=0;sessions.filter(s=>s.client||s.treatment).forEach(s=>{sv+=parseFloat(s.amount)||0;tp+=parseFloat(s.tips)||0;});
   const grand=(sv+tp).toFixed(2);
   const subj=`Invoice #${invNum} – Yusuke Komiya – ${dateStr}`;
-  const body=`Hello Accounts Team,\n\nPlease find attached Invoice #${invNum} dated ${dateStr} for massage therapy services.\n\nTotal amount payable: $${grand}\n\nPlease process payment to:\nAccount Name: Yusuke Komiya\nBank: Westpac\nBSB: 734-279\nAccount No: 613009\n\nPlease don't hesitate to contact me if you have any questions.\n\nKind regards,\nYusuke Komiya`;
+  const body=`Hello Accounts Team,\n\nPlease find attached Invoice #${invNum} dated ${dateStr} for massage therapy services.\n\nTotal amount payable: $${grand}\n\nKind regards,\nYusuke Komiya`;
   window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent('accounts@gwinganna.com')}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
   showToast('Gmail draft opened — attach your PDF and send!');
   return false;
@@ -689,7 +689,7 @@ function openGmail(){
 function saveApiKey() {
   const key = document.getElementById('api-key').value.trim();
   if (!key) { showToast('Please paste your API key first.'); return; }
-  sessionStorage.setItem('anthropic_key', key);
+  localStorage.setItem('anthropic_key', key);
   showToast('API key saved ✓');
 }
 
