@@ -331,7 +331,7 @@ function openDrivePicker() {
   if (!accessToken) { signIn(); return; }
   if (!pickerInited) { showToast('Picker loading, try again in a moment.'); return; }
   const picker = new google.picker.PickerBuilder()
-    .addView(new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES).setIncludeFolders(true))
+    .addView(new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES).setIncludeFolders(true).setMode(google.picker.DocsViewMode.LIST))
     .setOAuthToken(accessToken)
     .setCallback(pickerCallback)
     .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
