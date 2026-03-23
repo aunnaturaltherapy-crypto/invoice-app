@@ -402,8 +402,8 @@ async function ocrImage(img) {
 
 async function runOCR() {
   if (!uploadedImages.length) return;
-  const apiKey = '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';
-  if (!apiKey) { alert('Please enter your Anthropic API key first.'); return; }
+  const WORKER_URL = 'https://round-salad-cca5.aunnaturaltherapy.workers.dev/';
+  
 
   document.getElementById('scan-btn').disabled = true;
   sessions = [];
@@ -434,13 +434,12 @@ Extract every appointment from all photos. For each return JSON with:
 Return ONLY a raw JSON array, no markdown.
 Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"Sarah-Ann Taylor","amount":85,"tip":10}]` });
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch(WORKER_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+
+
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
