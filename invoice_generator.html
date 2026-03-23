@@ -116,7 +116,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v2.0</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v2.1</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Yusuke Komiya · Powered by Claude AI</div>
   </div>
 </header>
@@ -331,10 +331,11 @@ function signOut() {
 
 // ── Drive Picker ──
 function openDrivePicker() {
+  showToast('Opening Drive picker…');
   if (!accessToken) { showToast("Please sign in with Google first (Step 1)"); return; }
   if (!pickerInited) { showToast('Picker loading, try again in a moment.'); return; }
   const picker = new google.picker.PickerBuilder()
-    .addView(new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES).setIncludeFolders(true).setMode(google.picker.DocsViewMode.LIST).setQuery('').setSortCriteria(google.picker.SortCriteria.LAST_MODIFIED))
+    .addView(new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES).setIncludeFolders(true).setMode(google.picker.DocsViewMode.LIST))
     .setOAuthToken(accessToken)
     .setCallback(pickerCallback)
     .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
