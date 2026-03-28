@@ -116,7 +116,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v2.2</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v2.3</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Yusuke Komiya · Powered by Claude AI</div>
   </div>
 </header>
@@ -152,10 +152,17 @@
     <p style="font-size:.87rem;color:var(--ink-soft);margin-bottom:16px;">
       Click the button below to open Google Drive and select all your weekly schedule photos at once — works on phone and computer.
     </p>
-    <button class="btn-drive" id="drive-btn" onclick="openDrivePicker()">
-      <svg width="16" height="16" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
-      Pick Photos from Google Drive
-    </button>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <button class="btn-drive" id="drive-btn" onclick="openDrivePicker()">
+        <svg width="16" height="16" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+        Pick Photos from Google Drive
+      </button>
+      <span style="font-size:.85rem;color:var(--ink-soft);">or</span>
+      <label style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;border:1.5px dashed var(--border);font-family:DM Sans,sans-serif;font-size:.9rem;font-weight:600;color:var(--ink-soft);background:white;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--ink-soft)'">
+        📁 Upload from Device
+        <input type="file" accept="image/*" multiple style="display:none;" onchange="handleFileUpload(event)">
+      </label>
+    </div>
 
     <div class="thumbs" id="thumbs"></div>
     <div id="status-bar" class="status-bar">
@@ -351,6 +358,24 @@ function openDrivePicker() {
   picker.setVisible(true);
 }
 
+
+// ── Upload from device ──
+async function handleFileUpload(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  setStatus(true, `Loading ${files.length} photo(s) from device…`);
+  for (const file of files) {
+    const dataUrl = await new Promise((res, rej) => {
+      const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsDataURL(file);
+    });
+    uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: file.type||'image/jpeg', name: file.name });
+  }
+  renderThumbs();
+  setStatus(false);
+  document.getElementById('scan-btn').disabled = false;
+  document.getElementById('img-count').textContent = `${uploadedImages.length} photo(s) ready`;
+  showToast(`✅ ${files.length} photo(s) loaded from device!`);
+}
 
 async function pickerCallback(data) {
   if (data.action !== google.picker.Action.PICKED) return;
