@@ -116,7 +116,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.2</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.3</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -165,7 +165,7 @@
     </div>
 
     <!-- Drag and drop zone -->
-    <div id="drop-zone" style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--ink-soft);font-size:.88rem;margin-bottom:14px;transition:all .2s;">
+    <div id="drop-zone" style="border:2px dashed var(--border);border-radius:10px;padding:40px 24px;text-align:center;color:var(--ink-soft);font-size:.95rem;margin-bottom:14px;transition:all .2s;width:100%;box-sizing:border-box;">
       📂 Drag &amp; drop photos here
     </div>
 
@@ -813,31 +813,22 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 addSession(); addSession();
 
-// ── Drag and drop setup (runs after DOM ready) ──
-window.addEventListener('DOMContentLoaded', () => {
-  const dropZone = document.getElementById('drop-zone');
-  if (!dropZone) return;
-  dropZone.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.style.borderColor = 'var(--accent)';
-    dropZone.style.background = 'var(--accent-light)';
-  });
-  dropZone.addEventListener('dragleave', e => {
-    e.preventDefault();
-    dropZone.style.borderColor = 'var(--border)';
-    dropZone.style.background = '';
-  });
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.style.borderColor = 'var(--border)';
-    dropZone.style.background = '';
+// ── Drag and drop setup ──
+function initDropZone() {
+  const dz = document.getElementById('drop-zone');
+  if (!dz) { setTimeout(initDropZone, 200); return; }
+  dz.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); dz.style.borderColor='var(--accent)'; dz.style.background='var(--accent-light)'; });
+  dz.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); dz.style.borderColor='var(--accent)'; dz.style.background='var(--accent-light)'; });
+  dz.addEventListener('dragleave', e => { e.preventDefault(); dz.style.borderColor='var(--border)'; dz.style.background=''; });
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    dz.style.borderColor='var(--border)'; dz.style.background='';
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
     if (!files.length) { showToast('Please drop image files only'); return; }
     processFiles(files);
   });
-});
+}
+initDropZone();
 
 </script>
 <!-- Google Identity Services for auth + gapi for Drive/Picker -->
