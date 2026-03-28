@@ -116,7 +116,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v2.8</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.0</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -187,7 +187,7 @@
   <div class="card no-print">
     <div class="card-title">🧾 Invoice Details</div>
     <div class="row">
-      <div><label>Invoice Number</label><input type="number" id="inv-num" value="154"></div>
+      <div><label>Invoice Number</label><input type="number" id="inv-num" value="154" onchange="localStorage.setItem('invoiceNum',this.value)"></div>
       <div><label>Invoice Date</label><input type="date" id="inv-date"></div>
     </div>
   </div>
@@ -267,7 +267,8 @@
   </div>
   <div class="actions no-print" style="margin-top:24px;justify-content:center;gap:14px;">
     <button class="btn btn-outline" onclick="editInvoice()">✏️ Edit</button>
-    <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+    <button class="btn btn-primary" onclick="printInvoice()">🖨️ Print / Save PDF</button>
+    <button class="btn btn-outline" onclick="exportCSV()">📊 Export CSV</button>
     <a class="btn-gmail" href="#" onclick="return openGmail()">
       <svg width="18" height="18" viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.907 1.528-1.148C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/></svg>
       Draft Gmail
@@ -299,6 +300,9 @@ let accessToken = null;
 let gapiReady = false;
 
 document.getElementById('inv-date').valueAsDate = new Date();
+// Load saved invoice number
+const savedNum = localStorage.getItem('invoiceNum');
+if (savedNum) document.getElementById('inv-num').value = savedNum;
 
 
 // ── Google Auth (Google Identity Services) ──
@@ -727,6 +731,8 @@ function generateInvoice(){
   document.getElementById('form-section').style.display='none';
   document.getElementById('invoice-preview').style.display='block';
   window.scrollTo({top:0,behavior:'smooth'});
+  // Save invoice number to localStorage
+  localStorage.setItem('invoiceNum', document.getElementById('inv-num').value);
 }
 function editInvoice(){
   document.getElementById('form-section').style.display='block';
@@ -746,6 +752,60 @@ function openGmail(){
   window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent('accounts@gwinganna.com')}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
   showToast('Gmail draft opened — attach your PDF and send!');
   return false;
+}
+
+// ── PDF filename & print ──
+function getMonthlyInvoiceCount() {
+  const dateVal = document.getElementById('inv-date').value;
+  const d = dateVal ? new Date(dateVal) : new Date();
+  const key = `invoiceCount_${d.getFullYear()}_${d.getMonth()}`;
+  return parseInt(localStorage.getItem(key) || '0');
+}
+
+function incrementMonthlyInvoiceCount() {
+  const dateVal = document.getElementById('inv-date').value;
+  const d = dateVal ? new Date(dateVal) : new Date();
+  const key = `invoiceCount_${d.getFullYear()}_${d.getMonth()}`;
+  const count = getMonthlyInvoiceCount() + 1;
+  localStorage.setItem(key, count);
+  return count;
+}
+
+function getInvoiceFilename() {
+  const dateVal = document.getElementById('inv-date').value;
+  const d = dateVal ? new Date(dateVal) : new Date();
+  const count = getMonthlyInvoiceCount();
+  const num = count > 0 ? count : 1;
+  const suffix = num===1?'st':num===2?'nd':num===3?'rd':'th';
+  const month = d.toLocaleDateString('en-AU',{month:'short'});
+  const year = d.getFullYear();
+  return `Invoice No.${num} ${month} ${year}`;
+}
+
+function printInvoice() {
+  incrementMonthlyInvoiceCount();
+  const origTitle = document.title;
+  document.title = getInvoiceFilename();
+  window.print();
+  document.title = origTitle;
+}
+
+// ── Export to CSV ──
+function exportCSV() {
+  const invNum = document.getElementById('inv-num').value;
+  const rows = [['Invoice No','Date','Treatment','Client','Amount','Tips']];
+  sessions.filter(s => s.client||s.treatment).forEach(s => {
+    const d = s.date ? s.date.split('-').reverse().join('/') : '';
+    rows.push([invNum, d, s.treatment||'', s.client||'', s.amount||'', s.tips||'']);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('
+');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = getInvoiceFilename() + '.csv';
+  a.click();
+  showToast('✅ CSV exported!');
 }
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
