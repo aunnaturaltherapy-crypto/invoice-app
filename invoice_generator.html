@@ -116,7 +116,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v2.7</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v2.8</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -378,13 +378,29 @@ async function handleFileUpload(event) {
   await processFiles(files);
 }
 
+async function resizeImage(file, maxWidth=1200) {
+  return new Promise((res) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      res(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.src = url;
+  });
+}
+
 async function processFiles(files) {
   setStatus(true, `Loading ${files.length} photo(s)…`);
   for (const file of files) {
-    const dataUrl = await new Promise((res, rej) => {
-      const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsDataURL(file);
-    });
-    uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: file.type||'image/jpeg', name: file.name });
+    const dataUrl = await resizeImage(file);
+    uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: 'image/jpeg', name: file.name });
   }
   renderThumbs();
   setStatus(false);
