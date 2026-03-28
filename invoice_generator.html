@@ -116,7 +116,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.1</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.2</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -300,28 +300,7 @@ let gapiReady = false;
 
 document.getElementById('inv-date').valueAsDate = new Date();
 
-// ── Drag and drop setup ──
-const dropZone = document.getElementById('drop-zone');
-dropZone.addEventListener('dragover', e => {
-  e.preventDefault();
-  e.stopPropagation();
-  dropZone.style.borderColor = 'var(--accent)';
-  dropZone.style.background = 'var(--accent-light)';
-});
-dropZone.addEventListener('dragleave', e => {
-  e.preventDefault();
-  dropZone.style.borderColor = 'var(--border)';
-  dropZone.style.background = '';
-});
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  e.stopPropagation();
-  dropZone.style.borderColor = 'var(--border)';
-  dropZone.style.background = '';
-  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-  if (!files.length) { showToast('Please drop image files only'); return; }
-  processFiles(files);
-});
+
 // Load saved invoice number
 const savedNum = localStorage.getItem('invoiceNum');
 if (savedNum) document.getElementById('inv-num').value = savedNum;
@@ -833,6 +812,32 @@ function exportCSV() {
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
 
 addSession(); addSession();
+
+// ── Drag and drop setup (runs after DOM ready) ──
+window.addEventListener('DOMContentLoaded', () => {
+  const dropZone = document.getElementById('drop-zone');
+  if (!dropZone) return;
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.style.borderColor = 'var(--accent)';
+    dropZone.style.background = 'var(--accent-light)';
+  });
+  dropZone.addEventListener('dragleave', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--border)';
+    dropZone.style.background = '';
+  });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.style.borderColor = 'var(--border)';
+    dropZone.style.background = '';
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (!files.length) { showToast('Please drop image files only'); return; }
+    processFiles(files);
+  });
+});
 
 </script>
 <!-- Google Identity Services for auth + gapi for Drive/Picker -->
