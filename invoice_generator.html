@@ -116,8 +116,8 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v2.5</span></h1>
-    <div class="subtitle">Gwinganna Lifestyle Retreat · Yusuke Komiya · Powered by Claude AI</div>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v2.7</span></h1>
+    <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
 
@@ -505,6 +505,7 @@ Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"
 
     if (!resp.ok) { const e = await resp.json(); throw new Error(e.error?.message || `API error ${resp.status}`); }
     const data = await resp.json();
+    if (!data.content) throw new Error('Worker error: ' + JSON.stringify(data));
     const text = data.content.map(b => b.text||'').join('').replace(/```json|```/g,'').trim();
     const extracted = JSON.parse(text);
 
