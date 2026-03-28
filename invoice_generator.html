@@ -116,7 +116,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.4</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.5</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -158,10 +158,8 @@
         Pick Photos from Google Drive
       </button>
       <span style="font-size:.85rem;color:var(--ink-soft);">or</span>
-      <label style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;border:1.5px dashed var(--border);font-family:DM Sans,sans-serif;font-size:.9rem;font-weight:600;color:var(--ink-soft);background:white;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--ink-soft)'">
-        📁 Upload from Device
-        <input type="file" accept="image/*" multiple style="display:none;" onchange="handleFileUpload(event)">
-      </label>
+      <button class="btn-drive" onclick="document.getElementById('file-input').click()">📁 Upload from Device</button>
+      <input type="file" id="file-input" accept="image/*" multiple style="display:none;" onchange="handleFileUpload(event)">
     </div>
 
     <!-- Drag and drop zone -->
