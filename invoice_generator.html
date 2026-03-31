@@ -128,7 +128,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.11</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.12</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -315,9 +315,22 @@ let gapiReady = false;
 document.getElementById('inv-date').valueAsDate = new Date();
 
 
-// Load saved invoice number
-const savedNum = localStorage.getItem('invoiceNum');
-if (savedNum) document.getElementById('inv-num').value = savedNum;
+// Load invoice number from Cloudflare KV
+async function loadInvoiceNum() {
+  try {
+    const resp = await fetch(WORKER_URL, { headers: { 'X-Action': 'get-invoice-num' } });
+    const data = await resp.json();
+    if (data.invoiceNum) {
+      document.getElementById('inv-num').value = data.invoiceNum;
+      localStorage.setItem('invoiceNum', data.invoiceNum);
+    }
+  } catch(e) {
+    // Fall back to localStorage if offline
+    const savedNum = localStorage.getItem('invoiceNum');
+    if (savedNum) document.getElementById('inv-num').value = savedNum;
+  }
+}
+loadInvoiceNum();
 
 
 // ── Google Auth (Google Identity Services) ──
@@ -780,6 +793,12 @@ function openGmail(){
   const nextNum = parseInt(invNum) + 1;
   document.getElementById('inv-num').value = nextNum;
   localStorage.setItem('invoiceNum', nextNum);
+  // Save to Cloudflare KV so all devices stay in sync
+  fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Action': 'set-invoice-num' },
+    body: JSON.stringify({ invoiceNum: nextNum })
+  }).catch(e => console.log('KV save failed:', e));
   showToast('Gmail draft opened — attach your PDF and send!');
   return false;
 }
