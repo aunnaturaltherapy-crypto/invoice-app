@@ -128,7 +128,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.14</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.15</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -410,6 +410,39 @@ async function handleFileUpload(event) {
   await processFiles(files);
 }
 
+async function resizeImageBlob(blob) {
+  return new Promise((res) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      const maxPx = 1000;
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      const targetBase64 = 3 * 1024 * 1024;
+      let quality = 0.7;
+      let dataUrl = canvas.toDataURL('image/jpeg', quality);
+      while (dataUrl.length > targetBase64 && quality > 0.1) {
+        quality = Math.round((quality - 0.1) * 10) / 10;
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+      }
+      if (dataUrl.length > targetBase64) {
+        const canvas2 = document.createElement('canvas');
+        canvas2.width = Math.round(w * 0.6);
+        canvas2.height = Math.round(h * 0.6);
+        canvas2.getContext('2d').drawImage(img, 0, 0, canvas2.width, canvas2.height);
+        dataUrl = canvas2.toDataURL('image/jpeg', 0.5);
+      }
+      res(dataUrl);
+    };
+    img.src = url;
+  });
+}
+
 async function resizeImage(file) {
   return new Promise((res) => {
     const img = new Image();
@@ -472,10 +505,9 @@ async function pickerCallback(data) {
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const blob = await resp.blob();
-      const dataUrl = await new Promise((res, rej) => {
-        const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsDataURL(blob);
-      });
-      uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: doc.mimeType||'image/jpeg', name: doc.name, fileId: doc.id });
+      // Compress the image before storing
+      const dataUrl = await resizeImageBlob(blob);
+      uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: 'image/jpeg', name: doc.name, fileId: doc.id });
       renderThumbs();
     } catch(e) { showToast('Could not load ' + doc.name); }
   }
