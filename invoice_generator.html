@@ -128,7 +128,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.13</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.14</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -410,24 +410,36 @@ async function handleFileUpload(event) {
   await processFiles(files);
 }
 
-async function resizeImage(file, maxWidth=800) {
+async function resizeImage(file) {
   return new Promise((res) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const scale = Math.min(1, maxWidth / Math.max(img.width, img.height));
+      // Target max 1000px on longest side
+      const maxPx = 1000;
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
       const w = Math.round(img.width * scale);
       const h = Math.round(img.height * scale);
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      // Try progressively lower quality until under 1MB
-      let quality = 0.6;
+      // Target under 3MB base64 (~2.25MB binary = well under 5MB API limit)
+      // base64 is ~1.37x larger than binary
+      const targetBase64 = 3 * 1024 * 1024;
+      let quality = 0.7;
       let dataUrl = canvas.toDataURL('image/jpeg', quality);
-      while (dataUrl.length > 1 * 1024 * 1024 && quality > 0.1) {
-        quality -= 0.1;
+      while (dataUrl.length > targetBase64 && quality > 0.1) {
+        quality = Math.round((quality - 0.1) * 10) / 10;
         dataUrl = canvas.toDataURL('image/jpeg', quality);
+      }
+      // If still too big, resize smaller and try again
+      if (dataUrl.length > targetBase64) {
+        const canvas2 = document.createElement('canvas');
+        canvas2.width = Math.round(w * 0.6);
+        canvas2.height = Math.round(h * 0.6);
+        canvas2.getContext('2d').drawImage(img, 0, 0, canvas2.width, canvas2.height);
+        dataUrl = canvas2.toDataURL('image/jpeg', 0.5);
       }
       res(dataUrl);
     };
