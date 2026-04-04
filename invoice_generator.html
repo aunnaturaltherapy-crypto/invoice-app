@@ -128,7 +128,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.12</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.13</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -410,7 +410,7 @@ async function handleFileUpload(event) {
   await processFiles(files);
 }
 
-async function resizeImage(file, maxWidth=1200) {
+async function resizeImage(file, maxWidth=800) {
   return new Promise((res) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -422,10 +422,10 @@ async function resizeImage(file, maxWidth=1200) {
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      // Try progressively lower quality until under 3MB
-      let quality = 0.7;
+      // Try progressively lower quality until under 1MB
+      let quality = 0.6;
       let dataUrl = canvas.toDataURL('image/jpeg', quality);
-      while (dataUrl.length > 3 * 1024 * 1024 && quality > 0.2) {
+      while (dataUrl.length > 1 * 1024 * 1024 && quality > 0.1) {
         quality -= 0.1;
         dataUrl = canvas.toDataURL('image/jpeg', quality);
       }
@@ -514,25 +514,11 @@ async function ocrImage(img) {
   return text;
 }
 
-async function runOCR() {
-  if (!uploadedImages.length) return;
+async function scanSingleImage(img) {
   const WORKER_URL = 'https://round-salad-cca5.aunnaturaltherapy.workers.dev/';
-  
+  const prompt = `This is a printed daily schedule sheet from Gwinganna Lifestyle Retreat spa for massage therapist Yusuke Komiya.
 
-  document.getElementById('scan-btn').disabled = true;
-  sessions = [];
-  setStatus(true, `Scanning ${uploadedImages.length} photo(s) with Claude AI…`);
-
-  try {
-    const content = [];
-    uploadedImages.forEach((img, i) => {
-      content.push({ type: 'text', text: `Schedule photo ${i+1} (${img.name}):` });
-      content.push({ type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.base64 } });
-    });
-
-    content.push({ type: 'text', text: `These are printed daily schedule sheets from Gwinganna Lifestyle Retreat spa for massage therapist Yusuke Komiya.
-
-Extract every appointment from all photos. For each return JSON with:
+Extract every appointment from the photo. For each return JSON with:
 - date: YYYY-MM-DD (from sheet header e.g. "Saturday, 21 March 2026" → "2026-03-21")
 - treatment: full name with duration (e.g. "Lymphatic Drainage 80min", "Gwinganna Intuitive Massage 80min")
 - client: client full name
@@ -546,31 +532,46 @@ Extract every appointment from all photos. For each return JSON with:
 - tip: tip amount as a number (look carefully for handwritten tip amounts next to client signatures, 0 if none)
 
 Return ONLY a raw JSON array, no markdown.
-Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"Sarah-Ann Taylor","amount":85,"tip":10}]` });
+Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"Sarah-Ann Taylor","amount":85,"tip":10}]`;
 
-    const resp = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  const resp = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.base64 } },
+        { type: 'text', text: prompt }
+      ]}]
+    })
+  });
+  if (!resp.ok) { const e = await resp.json(); throw new Error(e.error?.message || `API error ${resp.status}`); }
+  const data = await resp.json();
+  if (!data.content) throw new Error('Worker error: ' + JSON.stringify(data));
+  const text = data.content.map(b => b.text||'').join('').replace(/```json|```/g,'').trim();
+  return JSON.parse(text);
+}
 
+async function runOCR() {
+  if (!uploadedImages.length) return;
+  document.getElementById('scan-btn').disabled = true;
+  sessions = [];
+  setStatus(true, `Scanning photo 1 of ${uploadedImages.length}…`);
 
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content }]
-      })
-    });
+  try {
+    let allSessions = [];
+    for (let i = 0; i < uploadedImages.length; i++) {
+      setStatus(true, `Scanning photo ${i+1} of ${uploadedImages.length}…`);
+      const extracted = await scanSingleImage(uploadedImages[i]);
+      if (Array.isArray(extracted)) allSessions = allSessions.concat(extracted);
+      uploadedImages[i].ocrDone = true;
+      renderThumbs();
+    }
 
-    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error?.message || `API error ${resp.status}`); }
-    const data = await resp.json();
-    if (!data.content) throw new Error('Worker error: ' + JSON.stringify(data));
-    const text = data.content.map(b => b.text||'').join('').replace(/```json|```/g,'').trim();
-    const extracted = JSON.parse(text);
+    if (!allSessions.length) throw new Error('No sessions found in photos.');
 
-    if (!Array.isArray(extracted) || !extracted.length) throw new Error('No sessions found in photos.');
-
-    sessions = extracted.map(s => ({
+    sessions = allSessions.map(s => ({
       id: Date.now()+Math.random(),
       date: s.date||'',
       treatment: normTreatment(s.treatment||''),
@@ -580,8 +581,6 @@ Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"
       ocr: true
     }));
 
-    uploadedImages.forEach(img => { img.ocrDone = true; });
-    renderThumbs();
     renderSessions();
     setStatus(false);
     showToast(`✅ Extracted ${sessions.length} sessions from ${uploadedImages.length} photos!`);
