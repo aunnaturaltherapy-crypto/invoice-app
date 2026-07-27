@@ -66,8 +66,9 @@
   .scan-btn{margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 
   /* Sessions */
-  .sessions-header{display:grid;grid-template-columns:105px 1fr 175px 80px 80px 36px;gap:8px;font-size:.71rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;}
-  .session-row{display:grid;grid-template-columns:105px 1fr 175px 80px 80px 36px;gap:8px;align-items:center;margin-bottom:7px;animation:fadeIn .25s ease;}
+  .sessions-header{display:grid;grid-template-columns:105px 1fr 175px 80px 80px 36px 36px;gap:8px;font-size:.71rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;}
+  .session-row{display:grid;grid-template-columns:105px 1fr 175px 80px 80px 36px 36px;gap:8px;align-items:center;margin-bottom:7px;animation:fadeIn .25s ease;}
+  .session-row.addon-row{background:#f5eefc;border-radius:6px;outline:1.5px solid #c9a6e8;outline-offset:2px;}
   @keyframes fadeIn{from{opacity:0;transform:translateY(-3px);}to{opacity:1;transform:none;}}
   label{display:block;font-size:.78rem;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;}
   input,select{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--ink);background:white;transition:border-color .15s;}
@@ -81,6 +82,8 @@
   .btn-outline:hover{background:var(--accent-light);}
   .btn-danger{background:transparent;color:var(--danger);border:none;padding:6px;border-radius:6px;font-size:.8rem;}
   .btn-danger:hover{background:#fef0f0;}
+  .btn-addon{background:transparent;color:#9b59b6;border:none;padding:6px;border-radius:6px;font-size:.9rem;}
+  .btn-addon:hover{background:#f5eefc;}
   .btn-sm{padding:8px 14px;font-size:.82rem;}
   .btn:disabled{opacity:.45;cursor:not-allowed;transform:none !important;}
   .btn-gmail{background:#fff;color:#3c4043;border:1.5px solid #dadce0;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;text-decoration:none;}
@@ -207,7 +210,7 @@
       <span style="font-size:.75rem;font-family:'DM Sans',sans-serif;font-weight:400;color:#aaa;margin-left:4px;">(blue = auto-extracted, editable)</span>
     </div>
     <div class="sessions-header">
-      <div>Date</div><div>Treatment</div><div>Client</div><div>Amount $</div><div>Tips $</div><div></div>
+      <div>Date</div><div>Treatment</div><div>Client</div><div>Amount $</div><div>Tips $</div><div></div><div></div>
     </div>
     <div id="sessions-list"></div>
     <div class="actions">
@@ -304,7 +307,7 @@ const RATES = {
   'Deep Tissue - Relaxation 80min':85,'Deep Tissue - Relaxation 50min':58.50,
   'Lymphatic Drainage 80min':85,'Shiatsu 80min':85,'Shiatsu 50min':58.50,
   'Ayurveda Aromatherapy Massage 80min':85,'Ayurveda Aromatherapy Massage 50min':58.50,
-  'Foot Therapy 50min':58.50,'Other':0
+  'Foot Therapy 50min':58.50,'Face Mask':0,'Other':0
 };
 const TREATMENTS = Object.keys(RATES);
 
@@ -763,10 +766,21 @@ function setStatus(show, txt='') {
 // ── Sessions ──
 function addSession() { sessions.push({id:Date.now()+Math.random(),date:'',treatment:'',client:'',amount:'',tips:'',ocr:false}); renderSessions(); }
 function removeSession(id) { sessions = sessions.filter(s=>s.id!==id); renderSessions(); }
+function addFaceMaskAddon(id) {
+  const idx = sessions.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  const src = sessions[idx];
+  sessions.splice(idx + 1, 0, {
+    id: Date.now()+Math.random(), date: src.date, treatment: 'Face Mask',
+    client: src.client, amount: '', tips: 5, ocr: false, addon: true
+  });
+  renderSessions();
+  showToast('✅ Face Mask add-on added for ' + (src.client || 'client'));
+}
 function renderSessions() {
   const list = document.getElementById('sessions-list'); list.innerHTML = '';
   sessions.forEach(s => {
-    const div = document.createElement('div'); div.className = 'session-row';
+    const div = document.createElement('div'); div.className = 'session-row' + (s.addon ? ' addon-row' : '');
     const opts = TREATMENTS.map(t=>`<option value="${t}" ${s.treatment===t?'selected':''}>${t}</option>`).join('');
     const f = s.ocr ? 'ocr-filled' : '';
     div.innerHTML = `
@@ -776,6 +790,7 @@ function renderSessions() {
       <input type="text" class="${f}" placeholder="Client name" value="${s.client}" onchange="upd(${s.id},'client',this.value)">
       <input type="number" class="${f}" placeholder="$" step="0.01" value="${s.amount}" onchange="upd(${s.id},'amount',this.value)">
       <input type="number" class="${f}" placeholder="$" step="0.01" value="${s.tips}" onchange="upd(${s.id},'tips',this.value)">
+      <button class="btn btn-addon" title="Add Face Mask add-on for ${s.client||'this client'} ($5 tip)" onclick="addFaceMaskAddon(${s.id})">🧖</button>
       <button class="btn btn-danger" onclick="removeSession(${s.id})">✕</button>`;
     list.appendChild(div);
   });
