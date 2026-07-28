@@ -133,7 +133,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.17</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.18</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -203,6 +203,9 @@
     <div class="row">
       <div><label>Invoice Number</label><input type="number" id="inv-num" value="155" onchange="localStorage.setItem('invoiceNum',this.value)"></div>
       <div><label>Invoice Date</label><input type="date" id="inv-date"></div>
+    </div>
+    <div style="margin-top:10px;">
+      <a href="#" onclick="updateSheetConfig();return false;" style="font-size:.78rem;color:var(--ink-soft);text-decoration:underline;">⚙️ Update tracking sheet (once a year)</a>
     </div>
   </div>
 
@@ -283,10 +286,14 @@
     <button class="btn btn-outline" onclick="editInvoice()">✏️ Edit</button>
     <button class="btn btn-primary" onclick="printInvoice()">🖨️ Print / Save PDF</button>
     <button class="btn btn-outline" onclick="exportCSV()">📊 Export CSV</button>
-    <a class="btn-gmail" href="#" onclick="return openGmail()">
+    <a class="btn-gmail" href="#" id="draft-gmail-btn" onclick="openGmail();return false;">
       <svg width="18" height="18" viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.907 1.528-1.148C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/></svg>
       Draft Gmail
     </a>
+  </div>
+  <div class="no-print" id="confirm-sent-banner" style="display:none;margin-top:14px;padding:14px 18px;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;text-align:center;">
+    <div style="font-size:.85rem;color:#2c5f2e;margin-bottom:10px;">Draft created in Gmail — once you've reviewed it and clicked Send there:</div>
+    <button class="btn btn-primary" onclick="confirmInvoiceSent()">✅ I've sent it</button>
   </div>
 </div>
 </div>
@@ -303,6 +310,8 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 const WORKER_URL = 'https://round-salad-cca5.aunnaturaltherapy.workers.dev/';
 const SCHEDULE_FOLDER_ID = '1M5I_fjluRplgmfv0IT3hCs1bo4MEdQX1'; // dedicated Drive folder for weekly schedule photos
 const MAX_AUTO_CANDIDATES = 30; // sanity cap — if a scan finds more than this, bail to the manual picker instead
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzMUjBADiMGtBuTn0u9V79o6jHf5ZvMAbDsyBMYC3EY9OH8NuHRBZuC3TRd_rRcLVeD/exec';
+const APPS_SCRIPT_SECRET = 'e881401e942a7bbd93f25b8637b5bd9dd54a6c8833f42565'; // must match SCRIPT_SECRET in the Apps Script
 
 const RATES = {
   'Gwinganna Intuitive Massage 80min':101,'Gwinganna Intuitive Massage 50min':70,
@@ -319,6 +328,8 @@ const ADDON_KEYWORDS = ['mask']; // notes-field keywords that flag a possible ad
 let sessions = [];
 let uploadedImages = [];
 let pendingInvoicedFileIds = []; // Drive file IDs that produced real sessions this batch — committed to the ledger when the invoice is sent
+let pendingSendCommit = null; // holds {nextInvoiceNum, driveFileIds, sheetRows} between "Draft Gmail" and "I've sent it"
+let sheetConfig = { sheetId: '', tabName: '' }; // this year's accumulation-sheet target, loaded from KV
 let accessToken = null;
 let gapiReady = false;
 
@@ -341,6 +352,45 @@ async function loadInvoiceNum() {
   }
 }
 loadInvoiceNum();
+
+// ── Accumulation-sheet config (which Sheet + tab to append invoice rows to) ──
+async function loadSheetConfig() {
+  try {
+    const resp = await fetch(WORKER_URL, { headers: { 'X-Action': 'get-sheet-config' } });
+    const data = await resp.json();
+    if (data.sheetId) sheetConfig = { sheetId: data.sheetId, tabName: data.tabName || '' };
+  } catch (e) {
+    console.log('Could not load sheet config:', e);
+  }
+}
+loadSheetConfig();
+
+function extractSheetId(input) {
+  const m = String(input || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : String(input || '').trim();
+}
+
+async function updateSheetConfig() {
+  const currentUrl = sheetConfig.sheetId ? `https://docs.google.com/spreadsheets/d/${sheetConfig.sheetId}/edit` : '';
+  const urlInput = prompt('Paste this year\'s accumulation Google Sheet URL (or just its ID):', currentUrl);
+  if (urlInput === null) return;
+  const sheetId = extractSheetId(urlInput);
+  if (!sheetId) { showToast('No Sheet ID found in that input.'); return; }
+  const tabInput = prompt('Tab name to append rows to (e.g. "Data from March 2026"):', sheetConfig.tabName || '');
+  if (tabInput === null) return;
+  if (!tabInput.trim()) { showToast('Tab name is required.'); return; }
+  sheetConfig = { sheetId, tabName: tabInput.trim() };
+  try {
+    await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Action': 'set-sheet-config' },
+      body: JSON.stringify(sheetConfig)
+    });
+    showToast('✅ Tracking sheet updated: ' + sheetConfig.tabName);
+  } catch (e) {
+    showToast('⚠️ Saved locally, but could not sync to KV: ' + e.message);
+  }
+}
 
 
 // ── Google Auth (Google Identity Services) ──
@@ -962,7 +1012,56 @@ function editInvoice(){
 }
 
 // ── Gmail ──
-function openGmail(){
+async function generateInvoicePdfBase64() {
+  const el = document.getElementById('invoice-preview');
+  const canvas = await html2canvas(el, {
+    scale: 2,
+    ignoreElements: (node) => node.classList && node.classList.contains('no-print'),
+    onclone: (clonedDoc) => {
+      // Match the same layout the browser's native print/PDF already uses (@media print),
+      // since html2canvas otherwise renders the wider on-screen version with extra padding.
+      const style = clonedDoc.createElement('style');
+      style.textContent = `
+        .app{padding:0!important;max-width:100%!important;}
+        .card{box-shadow:none!important;border-radius:0!important;padding:0!important;margin:0!important;}
+        #invoice-preview{padding:20px!important;}
+      `;
+      clonedDoc.head.appendChild(style);
+    }
+  });
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
+  const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const pageWidth = 210, pageHeight = 297;
+  const imgHeight = (canvas.height * pageWidth) / canvas.width;
+  let heightLeft = imgHeight, position = 0;
+  pdf.addImage(imgData, 'JPEG', 0, position, pageWidth, imgHeight);
+  heightLeft -= pageHeight;
+  while (heightLeft > 5) { // small tolerance so a few stray mm don't spawn a near-blank trailing page
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'JPEG', 0, position, pageWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+  const bytes = new Uint8Array(pdf.output('arraybuffer'));
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function buildSheetRows(invNum) {
+  const rows = [];
+  sessions.filter(s => s.client || s.treatment).forEach(s => {
+    const d = s.date ? s.date.split('-').reverse().join('/') : '';
+    rows.push([invNum, d, s.treatment || '', s.client || '', s.amount || '', s.tips || '']);
+  });
+  return rows;
+}
+
+async function openGmail(){
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.startsWith('PASTE_')) {
+    showToast('⚠️ Apps Script URL not configured yet — see setup instructions.');
+    return;
+  }
   const invNum=document.getElementById('inv-num').value;
   const d=document.getElementById('inv-date').value?new Date(document.getElementById('inv-date').value):new Date();
   const dateStr=d.toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'});
@@ -970,22 +1069,102 @@ function openGmail(){
   const grand=(sv+tp).toFixed(2);
   const subj=`Invoice #${invNum} – Yusuke Komiya – ${dateStr}`;
   const body=`Hello Accounts Team,\n\nPlease find attached Invoice #${invNum} dated ${dateStr} for massage therapy services.\n\nTotal amount payable: $${grand}\n\nKind regards,\nYusuke Komiya`;
-  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent('accounts@gwinganna.com')}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
-  // Auto-increment invoice number for next week
-  const nextNum = parseInt(invNum) + 1;
-  document.getElementById('inv-num').value = nextNum;
-  localStorage.setItem('invoiceNum', nextNum);
-  // Save to Cloudflare KV so all devices stay in sync
+
+  const btn = document.getElementById('draft-gmail-btn');
+  btn.style.pointerEvents = 'none';
+  btn.style.opacity = '0.6';
+  setStatus(true, 'Generating PDF…');
+
+  try {
+    incrementMonthlyInvoiceCount();
+    const pdfBase64 = await generateInvoicePdfBase64();
+    setStatus(true, 'Creating Gmail draft…');
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: APPS_SCRIPT_SECRET,
+        action: 'create-draft',
+        to: 'accounts@gwinganna.com',
+        subject: subj,
+        body: body,
+        pdfBase64: pdfBase64,
+        filename: getInvoiceFilename() + '.pdf'
+      })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Apps Script returned an error');
+
+    window.open('https://mail.google.com/mail/#drafts', '_blank');
+
+    pendingSendCommit = {
+      nextInvoiceNum: parseInt(invNum) + 1,
+      driveFileIds: [...pendingInvoicedFileIds],
+      sheetRows: buildSheetRows(invNum)
+    };
+    document.getElementById('confirm-sent-banner').style.display = 'block';
+    setStatus(false);
+    showToast('✅ Draft created with PDF attached — review & send it in Gmail, then confirm below.');
+  } catch (e) {
+    setStatus(false);
+    showToast('⚠️ Could not create the draft: ' + e.message);
+  } finally {
+    btn.style.pointerEvents = '';
+    btn.style.opacity = '';
+  }
+}
+
+async function confirmInvoiceSent() {
+  if (!pendingSendCommit) return;
+  const commit = pendingSendCommit;
+  pendingSendCommit = null;
+  document.getElementById('confirm-sent-banner').style.display = 'none';
+
+  // Advance the invoice number for next week
+  document.getElementById('inv-num').value = commit.nextInvoiceNum;
+  localStorage.setItem('invoiceNum', commit.nextInvoiceNum);
   fetch(WORKER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Action': 'set-invoice-num' },
-    body: JSON.stringify({ invoiceNum: nextNum })
+    body: JSON.stringify({ invoiceNum: commit.nextInvoiceNum })
   }).catch(e => console.log('KV save failed:', e));
-  // Commit this batch's source photos to the "already used" ledger now that the invoice is being sent
-  addProcessedPhotoIds(pendingInvoicedFileIds);
+
+  // Mark this batch's source photos as used
+  addProcessedPhotoIds(commit.driveFileIds);
   pendingInvoicedFileIds = [];
-  showToast('Gmail draft opened — attach your PDF and send!');
-  return false;
+
+  // Append this invoice's line items to the accumulation sheet
+  if (commit.sheetRows.length) {
+    const scriptConfigured = APPS_SCRIPT_URL && !APPS_SCRIPT_URL.startsWith('PASTE_');
+    if (!scriptConfigured) {
+      showToast('✅ Invoice finalized (Apps Script not set up yet — tracking sheet NOT updated)');
+      return;
+    }
+    if (!sheetConfig.sheetId) {
+      showToast('✅ Invoice finalized (tracking sheet not set up yet — use ⚙️ above)');
+      return;
+    }
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: APPS_SCRIPT_SECRET,
+          action: 'append-sheet-row',
+          sheetId: sheetConfig.sheetId,
+          tabName: sheetConfig.tabName,
+          rows: commit.sheetRows
+        })
+      });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || 'Apps Script returned an error');
+    } catch (e) {
+      showToast('⚠️ Invoice finalized, but the tracking sheet update failed: ' + e.message);
+      return;
+    }
+  }
+
+  showToast('✅ All done — invoice finalized!');
 }
 
 // ── PDF filename & print ──
@@ -1062,5 +1241,8 @@ document.addEventListener('drop', e => {
 <!-- Google Identity Services for auth + gapi for Drive/Picker -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<!-- PDF generation for auto-attached Gmail drafts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
