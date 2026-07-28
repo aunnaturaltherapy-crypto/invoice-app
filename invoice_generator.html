@@ -70,6 +70,7 @@
   .session-row{display:grid;grid-template-columns:105px 1fr 175px 80px 80px 36px 36px;gap:8px;align-items:center;margin-bottom:7px;animation:fadeIn .25s ease;}
   .session-row.addon-row{background:#f5eefc;border-radius:6px;outline:1.5px solid #c9a6e8;outline-offset:2px;}
   .session-row.flag-row{background:#fdf6d8;border-radius:6px;outline:1.5px solid #e0c341;outline-offset:2px;}
+  .session-row.tip-flag input[type="number"]:last-of-type{background:#fdeae5!important;outline:1.5px solid #e0765a;outline-offset:1px;border-radius:4px;}
   @keyframes fadeIn{from{opacity:0;transform:translateY(-3px);}to{opacity:1;transform:none;}}
   label{display:block;font-size:.78rem;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;}
   input,select{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--ink);background:white;transition:border-color .15s;}
@@ -132,7 +133,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.15</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.16</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -421,7 +422,7 @@ async function resizeImageBlob(blob) {
     const img = new Image();
     const url = URL.createObjectURL(blob);
     img.onload = () => {
-      const maxPx = 1000;
+      const maxPx = 1568;
       const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
       const w = Math.round(img.width * scale);
       const h = Math.round(img.height * scale);
@@ -454,8 +455,9 @@ async function resizeImage(file) {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      // Target max 1000px on longest side
-      const maxPx = 1000;
+      // Target max 1568px on longest side (Claude vision's own cap — going higher just burns
+      // upload time without adding legibility, going lower blurs small handwritten digits)
+      const maxPx = 1568;
       const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
       const w = Math.round(img.width * scale);
       const h = Math.round(img.height * scale);
@@ -578,18 +580,19 @@ Extract every appointment from the photo. For each return JSON with:
   Lymphatic Drainage 80min=85, Shiatsu 80min=85, 50min=58.50,
   Gwinganna Classic Massage 80min=63.89, 50min=44.10,
   Ayurveda Aromatherapy Massage 80min=85, Foot Therapy 50min=58.50
-- tip: tip amount as a number (look carefully for handwritten tip amounts next to client signatures, 0 if none)
+- tip: tip amount as a number. Look for a handwritten figure in or near that row's "Gratuity" box. A printed "$" is usually there as a hint — if digits follow it, read those — but the handwritten number itself does not always sit right next to a "$" or use one at all, so if you don't find digits touching a "$", scan the whole Gratuity box (and just outside its lines, since handwriting often spills over) for any handwritten number and use that instead. Read digit by digit — do not estimate or round. If a number has been crossed out and replaced, use the final legible replacement value for that row, not the crossed-out one and not unrelated stray digits from a different row. If the box is genuinely blank, return 0.
+- tipConfidence: "high" if the gratuity figure is written clearly with no crossing-out or ambiguity. "low" if it's blank, smudged, overwritten, has multiple crossed-out attempts, or you are genuinely unsure you read the correct digits.
 - notes: the raw text written in that appointment's Notes/Comments field ONLY (never the client name field), verbatim as written (e.g. "Diamond Radiance Mask"). Empty string "" if there is no note.
 - noteCircled: true only if that specific note has been visibly circled, boxed, or underlined by hand to draw attention to it. false if it's plain printed or handwritten text with no added markup, or if there is no note.
 
 Return ONLY a raw JSON array, no markdown.
-Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"Sarah-Ann Taylor","amount":85,"tip":10,"notes":"Diamond Radiance Mask","noteCircled":true}]`;
+Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"Sarah-Ann Taylor","amount":85,"tip":10,"tipConfidence":"high","notes":"Diamond Radiance Mask","noteCircled":true}]`;
 
   const resp = await fetch(WORKER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-5',
       max_tokens: 2000,
       messages: [{ role: 'user', content: [
         { type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.base64 } },
@@ -631,7 +634,8 @@ async function runOCR() {
         client: s.client||'',
         amount: s.amount || lookupRate(s.treatment) || '',
         tips: s.tip > 0 ? s.tip : '',
-        ocr: true
+        ocr: true,
+        tipFlag: s.tip > 0 && s.tipConfidence === 'low'
       };
       const notes = s.notes||'';
       const matchedKeyword = ADDON_KEYWORDS.find(k => notes.toLowerCase().includes(k));
@@ -809,8 +813,9 @@ function renderSessions() {
   const list = document.getElementById('sessions-list'); list.innerHTML = '';
   sessions.forEach(s => {
     const div = document.createElement('div');
-    div.className = 'session-row' + (s.addon ? ' addon-row' : '') + (s.maskFlag ? ' flag-row' : '');
+    div.className = 'session-row' + (s.addon ? ' addon-row' : '') + (s.maskFlag ? ' flag-row' : '') + (s.tipFlag ? ' tip-flag' : '');
     if (s.maskFlag) div.title = 'Notes mention a possible mask add-on that wasn\'t circled — add manually with 🧖 if needed';
+    if (s.tipFlag) div.title = (div.title ? div.title + ' | ' : '') + 'Tip amount was hard to read (crossed out, smudged, or ambiguous) — double-check against the photo';
     const customOpt = s.treatment && !TREATMENTS.includes(s.treatment) ? `<option value="${s.treatment}" selected>${s.treatment}</option>` : '';
     const opts = TREATMENTS.map(t=>`<option value="${t}" ${s.treatment===t?'selected':''}>${t}</option>`).join('');
     const f = s.ocr ? 'ocr-filled' : '';
@@ -827,7 +832,7 @@ function renderSessions() {
   });
   updateTotals();
 }
-function upd(id,f,v){const s=sessions.find(s=>s.id===id);if(s){s[f]=v;s.ocr=false;}updateTotals();}
+function upd(id,f,v){const s=sessions.find(s=>s.id===id);if(s){s[f]=v;s.ocr=false;if(f==='tips')s.tipFlag=false;}updateTotals();}
 function autoRate(id,t){const s=sessions.find(s=>s.id===id);if(s&&RATES[t]!==undefined){s.amount=RATES[t];renderSessions();}}
 function updateTotals(){
   let sv=0,tp=0,ct=0;
