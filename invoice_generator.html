@@ -133,7 +133,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.16</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v3.17</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -301,6 +301,8 @@
 const CLIENT_ID = '955548089142-btns2vovejhn21uh3vacrlci3k19eqr8.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 const WORKER_URL = 'https://round-salad-cca5.aunnaturaltherapy.workers.dev/';
+const SCHEDULE_FOLDER_ID = '1M5I_fjluRplgmfv0IT3hCs1bo4MEdQX1'; // dedicated Drive folder for weekly schedule photos
+const MAX_AUTO_CANDIDATES = 30; // sanity cap — if a scan finds more than this, bail to the manual picker instead
 
 const RATES = {
   'Gwinganna Intuitive Massage 80min':101,'Gwinganna Intuitive Massage 50min':70,
@@ -316,6 +318,7 @@ const ADDON_KEYWORDS = ['mask']; // notes-field keywords that flag a possible ad
 
 let sessions = [];
 let uploadedImages = [];
+let pendingInvoicedFileIds = []; // Drive file IDs that produced real sessions this batch — committed to the ledger when the invoice is sent
 let accessToken = null;
 let gapiReady = false;
 
@@ -365,6 +368,7 @@ function signIn() {
         document.getElementById('drive-btn').disabled = false;
         gapiReady = true;
         showToast('Signed in as ' + (info.email || 'Google user'));
+        autoCheckDriveForNewPhotos();
       });
     }
   });
@@ -379,6 +383,81 @@ function signOut() {
   document.getElementById('signin-btn').style.display = '';
   document.getElementById('drive-btn').disabled = true;
   showToast('Signed out');
+}
+
+// ── Auto-detect new schedule photos in the dedicated Drive folder ──
+async function getProcessedPhotoIds() {
+  const resp = await fetch(WORKER_URL, { headers: { 'X-Action': 'get-processed-photos' } });
+  const data = await resp.json();
+  return new Set(data.processedIds || []);
+}
+function addProcessedPhotoIds(ids) {
+  if (!ids || !ids.length) return;
+  fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Action': 'add-processed-photos' },
+    body: JSON.stringify({ ids })
+  }).catch(e => console.log('Processed-photo ledger save failed:', e));
+}
+
+async function autoCheckDriveForNewPhotos() {
+  if (!accessToken) return;
+  setStatus(true, 'Checking Drive for new schedule photos…');
+
+  let processedIds;
+  try {
+    processedIds = await getProcessedPhotoIds();
+  } catch (e) {
+    setStatus(false);
+    showToast('⚠️ Could not check which photos are already used — use the picker below instead.');
+    return;
+  }
+
+  let files;
+  try {
+    const q = encodeURIComponent(`'${SCHEDULE_FOLDER_ID}' in parents and mimeType contains 'image/' and trashed = false`);
+    const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,mimeType)&pageSize=100`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const data = await resp.json();
+    files = data.files || [];
+  } catch (e) {
+    setStatus(false);
+    showToast('⚠️ Could not reach Google Drive — use the picker below instead.');
+    return;
+  }
+
+  const newFiles = files.filter(f => !processedIds.has(f.id));
+  if (!newFiles.length) {
+    setStatus(false);
+    showToast("✅ You're all caught up — no new schedule photos.");
+    return;
+  }
+  if (newFiles.length > MAX_AUTO_CANDIDATES) {
+    setStatus(false);
+    showToast(`⚠️ Found ${newFiles.length} photos in the schedule folder — more than expected. Use the picker below to review manually.`);
+    return;
+  }
+
+  setStatus(true, `Found ${newFiles.length} new photo(s) — downloading…`);
+  for (const f of newFiles) {
+    try {
+      const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const blob = await resp.blob();
+      const dataUrl = await resizeImageBlob(blob);
+      uploadedImages.push({ dataUrl, base64: dataUrl.split(',')[1], mimeType: 'image/jpeg', name: f.name, fileId: f.id });
+    } catch (e) {
+      console.log('Could not download ' + f.name, e);
+    }
+  }
+  renderThumbs();
+  document.getElementById('scan-btn').disabled = false;
+  document.getElementById('img-count').textContent = `${uploadedImages.length} photo(s) ready`;
+  setStatus(false);
+  showToast(`✅ ${newFiles.length} new photo(s) loaded from Drive — extracting…`);
+  await runOCR();
 }
 
 // ── Drive Picker ──
@@ -611,6 +690,7 @@ async function runOCR() {
   if (!uploadedImages.length) return;
   document.getElementById('scan-btn').disabled = true;
   sessions = [];
+  pendingInvoicedFileIds = [];
   setStatus(true, `Scanning photo 1 of ${uploadedImages.length}…`);
 
   try {
@@ -618,7 +698,15 @@ async function runOCR() {
     for (let i = 0; i < uploadedImages.length; i++) {
       setStatus(true, `Scanning photo ${i+1} of ${uploadedImages.length}…`);
       const extracted = await scanSingleImage(uploadedImages[i]);
-      if (Array.isArray(extracted)) allSessions = allSessions.concat(extracted);
+      const fileId = uploadedImages[i].fileId;
+      if (Array.isArray(extracted) && extracted.length) {
+        allSessions = allSessions.concat(extracted);
+        if (fileId) pendingInvoicedFileIds.push(fileId);
+      } else if (fileId) {
+        // No appointments found — not a schedule photo (or blank). Mark it
+        // processed now so it's never re-scanned, without waiting for an invoice.
+        addProcessedPhotoIds([fileId]);
+      }
       uploadedImages[i].ocrDone = true;
       renderThumbs();
     }
@@ -893,6 +981,9 @@ function openGmail(){
     headers: { 'Content-Type': 'application/json', 'X-Action': 'set-invoice-num' },
     body: JSON.stringify({ invoiceNum: nextNum })
   }).catch(e => console.log('KV save failed:', e));
+  // Commit this batch's source photos to the "already used" ledger now that the invoice is being sent
+  addProcessedPhotoIds(pendingInvoicedFileIds);
+  pendingInvoicedFileIds = [];
   showToast('Gmail draft opened — attach your PDF and send!');
   return false;
 }
