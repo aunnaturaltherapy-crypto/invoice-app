@@ -133,7 +133,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.0</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.0.1</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -1081,7 +1081,7 @@ async function openGmail(){
     setStatus(true, 'Creating Gmail draft…');
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids a CORS preflight — Apps Script doesn't handle OPTIONS requests
       body: JSON.stringify({
         secret: APPS_SCRIPT_SECRET,
         action: 'create-draft',
@@ -1147,7 +1147,7 @@ async function confirmInvoiceSent() {
     try {
       const resp = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids a CORS preflight — Apps Script doesn't handle OPTIONS requests
         body: JSON.stringify({
           secret: APPS_SCRIPT_SECRET,
           action: 'append-sheet-row',
