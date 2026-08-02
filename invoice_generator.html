@@ -133,7 +133,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.0.3</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.0.4</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -1088,13 +1088,11 @@ async function openGmail(){
         subject: subj,
         body: body,
         pdfBase64: pdfBase64,
-        filename: `Invoice #${invNum} - ${dateStr}.pdf`
+        filename: getInvoiceFilename() + '.pdf' // same filename Print/Save PDF and Export CSV use — always matches by name
       })
     });
     const data = await resp.json();
     if (!data.ok) throw new Error(data.error || 'Apps Script returned an error');
-
-    incrementMonthlyInvoiceCount(); // keeps the local "Print/Save PDF" filename counter in sync too
 
     window.open('https://mail.google.com/mail/#drafts', '_blank');
 
@@ -1169,35 +1167,18 @@ async function confirmInvoiceSent() {
 }
 
 // ── PDF filename & print ──
-function getMonthlyInvoiceCount() {
-  const dateVal = document.getElementById('inv-date').value;
-  const d = dateVal ? new Date(dateVal) : new Date();
-  const key = `invoiceCount_${d.getFullYear()}_${d.getMonth()}`;
-  return parseInt(localStorage.getItem(key) || '0');
-}
-
-function incrementMonthlyInvoiceCount() {
-  const dateVal = document.getElementById('inv-date').value;
-  const d = dateVal ? new Date(dateVal) : new Date();
-  const key = `invoiceCount_${d.getFullYear()}_${d.getMonth()}`;
-  const count = getMonthlyInvoiceCount() + 1;
-  localStorage.setItem(key, count);
-  return count;
-}
-
+// Single source of truth for the invoice's filename — used by Print/Save PDF, Export CSV,
+// and the auto-attached Gmail draft, so the same invoice always produces the same filename
+// everywhere and can be found/matched by name alone.
 function getInvoiceFilename() {
+  const invNum = document.getElementById('inv-num').value;
   const dateVal = document.getElementById('inv-date').value;
   const d = dateVal ? new Date(dateVal) : new Date();
-  const count = getMonthlyInvoiceCount();
-  const num = count > 0 ? count : 1;
-  const suffix = num===1?'st':num===2?'nd':num===3?'rd':'th';
-  const month = d.toLocaleDateString('en-AU',{month:'short'});
-  const year = d.getFullYear();
-  return `Invoice No.${num} ${month} ${year}`;
+  const dateStr = d.toLocaleDateString('en-AU', {day:'numeric', month:'long', year:'numeric'});
+  return `Invoice #${invNum} - ${dateStr}`;
 }
 
 function printInvoice() {
-  incrementMonthlyInvoiceCount();
   const origTitle = document.title;
   document.title = getInvoiceFilename();
   window.print();
