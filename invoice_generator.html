@@ -133,7 +133,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.0.2</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.0.3</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -1088,13 +1088,13 @@ async function openGmail(){
         subject: subj,
         body: body,
         pdfBase64: pdfBase64,
-        filename: previewNextInvoiceFilename() + '.pdf'
+        filename: `Invoice #${invNum} - ${dateStr}.pdf`
       })
     });
     const data = await resp.json();
     if (!data.ok) throw new Error(data.error || 'Apps Script returned an error');
 
-    incrementMonthlyInvoiceCount(); // only consume a filename slot once the draft actually succeeded
+    incrementMonthlyInvoiceCount(); // keeps the local "Print/Save PDF" filename counter in sync too
 
     window.open('https://mail.google.com/mail/#drafts', '_blank');
 
@@ -1191,18 +1191,6 @@ function getInvoiceFilename() {
   const count = getMonthlyInvoiceCount();
   const num = count > 0 ? count : 1;
   const suffix = num===1?'st':num===2?'nd':num===3?'rd':'th';
-  const month = d.toLocaleDateString('en-AU',{month:'short'});
-  const year = d.getFullYear();
-  return `Invoice No.${num} ${month} ${year}`;
-}
-
-// Preview what the filename WOULD be if this attempt succeeds, without consuming a
-// counter slot yet — the caller only calls incrementMonthlyInvoiceCount() on confirmed success,
-// so a failed attempt (network error, CORS, etc.) doesn't inflate the count for nothing.
-function previewNextInvoiceFilename() {
-  const dateVal = document.getElementById('inv-date').value;
-  const d = dateVal ? new Date(dateVal) : new Date();
-  const num = getMonthlyInvoiceCount() + 1;
   const month = d.toLocaleDateString('en-AU',{month:'short'});
   const year = d.getFullYear();
   return `Invoice No.${num} ${month} ${year}`;
