@@ -133,7 +133,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.1.0</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.1.1</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -439,23 +439,24 @@ async function chooseLocalSaveFolder() {
   }
 }
 
-// Returns true if the PDF was actually written to disk; false if no folder is set up
-// (or permission isn't available) — callers treat that as "skip silently", not an error.
+// Returns a status object instead of a bare boolean, so the caller can tell the difference
+// between "not set up yet" (nothing to report) and "genuinely failed" (worth telling the user).
+// { ok: true } | { ok: false, reason: 'not-configured' | 'permission-denied' | string }
 async function saveInvoicePdfLocally(pdfBase64, filename) {
-  if (!window.showDirectoryPicker) return false;
+  if (!window.showDirectoryPicker) return { ok: false, reason: 'not-configured' };
   const handle = await loadDirectoryHandle();
-  if (!handle) return false;
+  if (!handle) return { ok: false, reason: 'not-configured' };
   let perm = await handle.queryPermission({ mode: 'readwrite' });
   if (perm !== 'granted') {
     perm = await handle.requestPermission({ mode: 'readwrite' }); // needs to run close to the user's click to succeed
   }
-  if (perm !== 'granted') return false;
+  if (perm !== 'granted') return { ok: false, reason: 'permission-denied' };
   const bytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
   const fileHandle = await handle.getFileHandle(filename, { create: true });
   const writable = await fileHandle.createWritable();
   await writable.write(bytes);
   await writable.close();
-  return true;
+  return { ok: true };
 }
 
 
@@ -1191,12 +1192,19 @@ async function confirmInvoiceSent() {
   // Do this first, closest to the button click — the browser's local-file permission
   // check needs to run soon after a real user gesture, before other awaited network calls use it up.
   let savedLocally = false;
+  let localSaveWarning = '';
   try {
-    savedLocally = await saveInvoicePdfLocally(commit.pdfBase64, commit.pdfFilename);
+    const result = await saveInvoicePdfLocally(commit.pdfBase64, commit.pdfFilename);
+    savedLocally = result.ok;
+    if (!result.ok && result.reason === 'permission-denied') {
+      localSaveWarning = ' ⚠️ Local save folder permission was denied — click 📁 Choose local save folder to re-grant it.';
+    }
+    // reason === 'not-configured' is expected for anyone who hasn't set up a folder — stay silent
   } catch (e) {
     console.log('Local save failed:', e);
+    localSaveWarning = ' ⚠️ Local save failed: ' + e.message;
   }
-  const localNote = savedLocally ? ' This invoice was saved locally as well.' : '';
+  const localNote = savedLocally ? ' This invoice was saved locally as well.' : localSaveWarning;
 
   // Advance the invoice number for next week
   document.getElementById('inv-num').value = commit.nextInvoiceNum;
