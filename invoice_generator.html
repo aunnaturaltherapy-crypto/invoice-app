@@ -133,7 +133,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.0.4</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.1.0</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -204,8 +204,9 @@
       <div><label>Invoice Number</label><input type="number" id="inv-num" value="155" onchange="localStorage.setItem('invoiceNum',this.value)"></div>
       <div><label>Invoice Date</label><input type="date" id="inv-date"></div>
     </div>
-    <div style="margin-top:10px;">
+    <div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;">
       <a href="#" onclick="updateSheetConfig();return false;" style="font-size:.78rem;color:var(--ink-soft);text-decoration:underline;">⚙️ Update tracking sheet (once a year)</a>
+      <a href="#" onclick="chooseLocalSaveFolder();return false;" style="font-size:.78rem;color:var(--ink-soft);text-decoration:underline;">📁 Choose local save folder</a>
     </div>
   </div>
 
@@ -390,6 +391,71 @@ async function updateSheetConfig() {
   } catch (e) {
     showToast('⚠️ Saved locally, but could not sync to KV: ' + e.message);
   }
+}
+
+// ── Local save folder (File System Access API — Chrome/Edge only) ──
+// Browsers can't silently write to an arbitrary path for security reasons, so the user
+// picks a folder once via a native dialog; the folder handle is remembered (IndexedDB)
+// and reused on every future invoice without asking again (permission-allowing).
+function openHandleDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('invoiceAppHandles', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('handles');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function saveDirectoryHandle(handle) {
+  const db = await openHandleDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, 'localSaveFolder');
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function loadDirectoryHandle() {
+  const db = await openHandleDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readonly');
+    const req = tx.objectStore('handles').get('localSaveFolder');
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function chooseLocalSaveFolder() {
+  if (!window.showDirectoryPicker) {
+    showToast('⚠️ Your browser doesn\'t support choosing a local save folder (Chrome/Edge only).');
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker();
+    await handle.requestPermission({ mode: 'readwrite' });
+    await saveDirectoryHandle(handle);
+    showToast('✅ Local save folder set: ' + handle.name);
+  } catch (e) {
+    if (e.name !== 'AbortError') showToast('⚠️ Could not set folder: ' + e.message);
+  }
+}
+
+// Returns true if the PDF was actually written to disk; false if no folder is set up
+// (or permission isn't available) — callers treat that as "skip silently", not an error.
+async function saveInvoicePdfLocally(pdfBase64, filename) {
+  if (!window.showDirectoryPicker) return false;
+  const handle = await loadDirectoryHandle();
+  if (!handle) return false;
+  let perm = await handle.queryPermission({ mode: 'readwrite' });
+  if (perm !== 'granted') {
+    perm = await handle.requestPermission({ mode: 'readwrite' }); // needs to run close to the user's click to succeed
+  }
+  if (perm !== 'granted') return false;
+  const bytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+  const fileHandle = await handle.getFileHandle(filename, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(bytes);
+  await writable.close();
+  return true;
 }
 
 
@@ -1077,6 +1143,7 @@ async function openGmail(){
 
   try {
     const pdfBase64 = await generateInvoicePdfBase64();
+    const pdfFilename = getInvoiceFilename() + '.pdf'; // same filename Print/Save PDF and Export CSV use — always matches by name
     setStatus(true, 'Creating Gmail draft…');
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -1088,7 +1155,7 @@ async function openGmail(){
         subject: subj,
         body: body,
         pdfBase64: pdfBase64,
-        filename: getInvoiceFilename() + '.pdf' // same filename Print/Save PDF and Export CSV use — always matches by name
+        filename: pdfFilename
       })
     });
     const data = await resp.json();
@@ -1099,7 +1166,9 @@ async function openGmail(){
     pendingSendCommit = {
       nextInvoiceNum: parseInt(invNum) + 1,
       driveFileIds: [...pendingInvoicedFileIds],
-      sheetRows: buildSheetRows(invNum)
+      sheetRows: buildSheetRows(invNum),
+      pdfBase64: pdfBase64,
+      pdfFilename: pdfFilename
     };
     document.getElementById('confirm-sent-banner').style.display = 'block';
     setStatus(false);
@@ -1119,6 +1188,16 @@ async function confirmInvoiceSent() {
   pendingSendCommit = null;
   document.getElementById('confirm-sent-banner').style.display = 'none';
 
+  // Do this first, closest to the button click — the browser's local-file permission
+  // check needs to run soon after a real user gesture, before other awaited network calls use it up.
+  let savedLocally = false;
+  try {
+    savedLocally = await saveInvoicePdfLocally(commit.pdfBase64, commit.pdfFilename);
+  } catch (e) {
+    console.log('Local save failed:', e);
+  }
+  const localNote = savedLocally ? ' This invoice was saved locally as well.' : '';
+
   // Advance the invoice number for next week
   document.getElementById('inv-num').value = commit.nextInvoiceNum;
   localStorage.setItem('invoiceNum', commit.nextInvoiceNum);
@@ -1136,11 +1215,11 @@ async function confirmInvoiceSent() {
   if (commit.sheetRows.length) {
     const scriptConfigured = APPS_SCRIPT_URL && !APPS_SCRIPT_URL.startsWith('PASTE_');
     if (!scriptConfigured) {
-      showToast('✅ Invoice finalized (Apps Script not set up yet — tracking sheet NOT updated)');
+      showToast('✅ Invoice finalized (Apps Script not set up yet — tracking sheet NOT updated).' + localNote);
       return;
     }
     if (!sheetConfig.sheetId) {
-      showToast('✅ Invoice finalized (tracking sheet not set up yet — use ⚙️ above)');
+      showToast('✅ Invoice finalized (tracking sheet not set up yet — use ⚙️ above).' + localNote);
       return;
     }
     try {
@@ -1158,12 +1237,12 @@ async function confirmInvoiceSent() {
       const data = await resp.json();
       if (!data.ok) throw new Error(data.error || 'Apps Script returned an error');
     } catch (e) {
-      showToast('⚠️ Invoice finalized, but the tracking sheet update failed: ' + e.message);
+      showToast('⚠️ Invoice finalized, but the tracking sheet update failed: ' + e.message + localNote);
       return;
     }
   }
 
-  showToast('✅ All done — invoice finalized!');
+  showToast('✅ All done — invoice finalized!' + localNote);
 }
 
 // ── PDF filename & print ──
