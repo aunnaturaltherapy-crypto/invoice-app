@@ -780,9 +780,10 @@ Extract every appointment from the photo. For each return JSON with:
 - tipConfidence: "high" if the gratuity figure is written clearly with no crossing-out or ambiguity. "low" if it's blank, smudged, overwritten, has multiple crossed-out attempts, or you are genuinely unsure you read the correct digits.
 - notes: the raw text written in that appointment's Notes/Comments field ONLY (never the client name field), verbatim as written (e.g. "Diamond Radiance Mask"). Empty string "" if there is no note.
 - noteCircled: true only if that specific note has been visibly circled, boxed, or underlined by hand to draw attention to it. false if it's plain printed or handwritten text with no added markup, or if there is no note.
+- cancelled: true if this appointment has been marked as cancelled by hand — e.g. the word "cancel"/"cancelled"/"CX"/"canx" written anywhere on that row, or an X mark or a strike-through line drawn across the row/time/client name indicating it did not go ahead. This can appear anywhere on the row, not just in the Notes field. false for a normal appointment with no such marking, even if it has other handwriting or circling on it for unrelated reasons.
 
 Return ONLY a raw JSON array, no markdown.
-Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"Sarah-Ann Taylor","amount":85,"tip":10,"tipConfidence":"high","notes":"Diamond Radiance Mask","noteCircled":true}]`;
+Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"Sarah-Ann Taylor","amount":85,"tip":10,"tipConfidence":"high","notes":"Diamond Radiance Mask","noteCircled":true,"cancelled":false}]`;
 
   const resp = await fetch(WORKER_URL, {
     method: 'POST',
@@ -831,7 +832,12 @@ async function runOCR() {
     if (!allSessions.length) throw new Error('No sessions found in photos.');
 
     sessions = [];
+    const cancelledSkipped = [];
     allSessions.forEach(s => {
+      if (s.cancelled) {
+        cancelledSkipped.push(`${s.client||'unknown client'} (${s.date||'no date'})`);
+        return;
+      }
       const row = {
         id: Date.now()+Math.random(),
         date: s.date||'',
@@ -866,7 +872,10 @@ async function runOCR() {
 
     renderSessions();
     setStatus(false);
-    showToast(`✅ Extracted ${sessions.length} sessions from ${uploadedImages.length} photos!`);
+    const cancelledNote = cancelledSkipped.length
+      ? ` Skipped ${cancelledSkipped.length} cancelled booking(s): ${cancelledSkipped.join(', ')}.`
+      : '';
+    showToast(`✅ Extracted ${sessions.length} sessions from ${uploadedImages.length} photos!${cancelledNote}`);
 
   } catch(e) {
     setStatus(false);
@@ -1289,7 +1298,7 @@ function exportCSV() {
   showToast('✅ CSV exported!');
 }
 
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');const dur=Math.min(Math.max(3500,msg.length*60),9000);setTimeout(()=>t.classList.remove('show'),dur);}
 
 addSession(); addSession();
 
