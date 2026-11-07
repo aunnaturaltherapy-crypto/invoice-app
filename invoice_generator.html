@@ -98,6 +98,24 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#222;color:white;padding:12px 22px;border-radius:30px;font-size:.88rem;transition:transform .3s ease;z-index:999;pointer-events:none;}
   .toast.show{transform:translateX(-50%) translateY(0);}
 
+  /* "Saved" status panel (shown after "I've sent it") */
+  .saved-panel{display:none;margin-top:24px;background:#fff;border:2px solid #2e7d32;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
+  .saved-panel.warn{border-color:#c62828;}
+  .saved-banner{padding:16px 18px;background:#2e7d32;color:#fff;}
+  .saved-panel.warn .saved-banner{background:#c62828;}
+  .saved-banner-title{font-size:1.25rem;font-weight:700;line-height:1.3;}
+  .saved-banner-sub{font-size:1rem;margin-top:4px;opacity:.95;}
+  .saved-steps{list-style:none;margin:0;padding:4px 18px;}
+  .saved-steps li{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border);font-size:1rem;line-height:1.4;}
+  .saved-steps li:last-child{border-bottom:none;}
+  .saved-icon{flex:0 0 auto;font-size:1.3rem;line-height:1.2;}
+  .saved-label{display:block;font-weight:600;}
+  .saved-detail{display:block;font-size:.92rem;color:var(--ink-soft);word-break:break-word;}
+  .saved-steps li.fail .saved-detail{color:#b71c1c;}
+  .saved-actions{padding:6px 18px 18px;}
+  .saved-actions .btn{width:100%;min-height:48px;justify-content:center;font-size:1rem;}
+  @media (max-width:520px){.saved-banner-title{font-size:1.15rem;}.saved-steps{padding:2px 14px;}.saved-actions{padding:6px 14px 14px;}}
+
   /* Invoice */
   @page{margin:1cm;size:A4;}  @media print{body{background:white;}.no-print{display:none !important;}.app{padding:0;max-width:100%;}.card{box-shadow:none;border-radius:0;padding:0;margin:0;}#invoice-preview{display:block !important;padding:20px;}}
   #invoice-preview{display:none;}
@@ -133,7 +151,7 @@
 
 <header class="no-print">
   <div>
-    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.2.0</span></h1>
+    <h1>📋 Invoice Generator <span style="font-size:.7rem;opacity:.8;font-family:DM Mono,monospace;margin-left:8px;">v4.3.0</span></h1>
     <div class="subtitle">Gwinganna Lifestyle Retreat · Powered by Claude AI</div>
   </div>
 </header>
@@ -297,6 +315,17 @@
     <button class="btn btn-primary" onclick="confirmInvoiceSent()">✅ I've sent it</button>
   </div>
 </div>
+
+<div class="saved-panel no-print" id="saved-panel" role="status" aria-live="polite">
+  <div class="saved-banner">
+    <div class="saved-banner-title" id="saved-banner-title"></div>
+    <div class="saved-banner-sub" id="saved-banner-sub"></div>
+  </div>
+  <ul class="saved-steps" id="saved-steps"></ul>
+  <div class="saved-actions">
+    <button class="btn btn-outline" onclick="dismissSavedPanel()">Dismiss</button>
+  </div>
+</div>
 </div>
 
 <div class="lightbox" id="lightbox" onclick="document.getElementById('lightbox').classList.remove('visible')">
@@ -329,7 +358,7 @@ const ADDON_KEYWORDS = ['mask']; // notes-field keywords that flag a possible ad
 let sessions = [];
 let uploadedImages = [];
 let pendingInvoicedFileIds = []; // Drive file IDs that produced real sessions this batch — committed to the ledger when the invoice is sent
-let pendingSendCommit = null; // holds {sheetRows, pdfBase64, pdfFilename} between "Draft Gmail" and "I've sent it"
+let pendingSendCommit = null; // holds {sheetRows, pdfBase64, pdfFilename + save results for the saved panel} between "Draft Gmail" and "I've sent it"
 let sheetConfig = { sheetId: '', tabName: '' }; // this year's accumulation-sheet target, loaded from KV
 let accessToken = null;
 let gapiReady = false;
@@ -508,13 +537,18 @@ async function getProcessedPhotoIds() {
   const data = await resp.json();
   return new Set(data.processedIds || []);
 }
+// Same request as always; additionally returns a promise of { ok, error? } (never rejects) so the
+// "saved" panel can report the outcome. Callers that ignore the return value are unaffected.
 function addProcessedPhotoIds(ids) {
-  if (!ids || !ids.length) return;
-  fetch(WORKER_URL, {
+  if (!ids || !ids.length) return Promise.resolve({ ok: true });
+  return fetch(WORKER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Action': 'add-processed-photos' },
     body: JSON.stringify({ ids })
-  }).catch(e => console.log('Processed-photo ledger save failed:', e));
+  })
+    .then(r => r.json())
+    .then(d => d.ok ? { ok: true } : { ok: false, error: d.error || 'the server did not confirm' })
+    .catch(e => { console.log('Processed-photo ledger save failed:', e); return { ok: false, error: e.message }; });
 }
 
 async function autoCheckDriveForNewPhotos() {
@@ -806,6 +840,7 @@ Example: [{"date":"2026-03-21","treatment":"Lymphatic Drainage 80min","client":"
 
 async function runOCR() {
   if (!uploadedImages.length) return;
+  hideSavedPanel(); // a new scan means the next invoice has started
   document.getElementById('scan-btn').disabled = true;
   sessions = [];
   pendingInvoicedFileIds = [];
@@ -1061,6 +1096,7 @@ function updateTotals(){
 function fmt(d){if(!d)return'';const[y,m,day]=d.split('-');return`${parseInt(day)}/${parseInt(m)}/${y.slice(2)}`;}
 function generateInvoice(){
   if(!sessions.filter(s=>s.client).length){alert('Please extract sessions first.');return;}
+  hideSavedPanel(); // previewing again means the next invoice has started
   document.getElementById('p-inv-num').textContent=document.getElementById('inv-num').value;
   document.getElementById('p-inv-date').textContent=fmt(document.getElementById('inv-date').value);
   const tbody=document.getElementById('p-rows');tbody.innerHTML='';
@@ -1146,6 +1182,7 @@ async function openGmail(){
   const subj=`Invoice #${invNum} – Yusuke Komiya – ${dateStr}`;
   const body=`Hello Accounts Team,\n\nPlease find attached Invoice #${invNum} dated ${dateStr} for massage therapy services.\n\nTotal amount payable: $${grand}\n\nKind regards,\nYusuke Komiya`;
 
+  hideSavedPanel(); // starting a new invoice's draft — clear the previous "saved" panel
   const btn = document.getElementById('draft-gmail-btn');
   btn.style.pointerEvents = 'none';
   btn.style.opacity = '0.6';
@@ -1180,20 +1217,30 @@ async function openGmail(){
     const nextInvoiceNum = parseInt(invNum) + 1;
     document.getElementById('inv-num').value = nextInvoiceNum;
     localStorage.setItem('invoiceNum', nextInvoiceNum);
-    fetch(WORKER_URL, {
+    const invoiceNumSave = fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Action': 'set-invoice-num' },
       body: JSON.stringify({ invoiceNum: nextInvoiceNum })
-    }).catch(e => console.log('KV save failed:', e));
+    })
+      .then(r => r.json())
+      .then(d => d.ok ? { ok: true } : { ok: false, error: d.error || 'the server did not confirm' })
+      .catch(e => { console.log('KV save failed:', e); return { ok: false, error: e.message }; });
 
     // Mark this batch's source photos as used
-    addProcessedPhotoIds(pendingInvoicedFileIds);
+    const photoCount = pendingInvoicedFileIds.length;
+    const photoSave = addProcessedPhotoIds(pendingInvoicedFileIds);
     pendingInvoicedFileIds = [];
 
     pendingSendCommit = {
       sheetRows: sheetRows,
       pdfBase64: pdfBase64,
-      pdfFilename: pdfFilename
+      pdfFilename: pdfFilename,
+      // Only used to report results in the "saved" panel after "I've sent it":
+      invNum: invNum,
+      nextInvoiceNum: nextInvoiceNum,
+      invoiceNumSave: invoiceNumSave,
+      photoCount: photoCount,
+      photoSave: photoSave
     };
     document.getElementById('confirm-sent-banner').style.display = 'block';
     setStatus(false);
@@ -1217,9 +1264,11 @@ async function confirmInvoiceSent() {
   // check needs to run soon after a real user gesture, before other awaited network calls use it up.
   let savedLocally = false;
   let localSaveWarning = '';
+  let localOutcome = { ok: false, reason: 'not-configured' }; // only used by the saved panel
   try {
     const result = await saveInvoicePdfLocally(commit.pdfBase64, commit.pdfFilename);
     savedLocally = result.ok;
+    localOutcome = result;
     if (!result.ok && result.reason === 'permission-denied') {
       localSaveWarning = ' ⚠️ Local save folder permission was denied — click 📁 Choose local save folder to re-grant it.';
     }
@@ -1227,6 +1276,7 @@ async function confirmInvoiceSent() {
   } catch (e) {
     console.log('Local save failed:', e);
     localSaveWarning = ' ⚠️ Local save failed: ' + e.message;
+    localOutcome = { ok: false, reason: 'error', error: e.message };
   }
   const localNote = savedLocally ? ' This invoice was saved locally as well.' : localSaveWarning;
 
@@ -1234,10 +1284,12 @@ async function confirmInvoiceSent() {
   if (commit.sheetRows.length) {
     const scriptConfigured = APPS_SCRIPT_URL && !APPS_SCRIPT_URL.startsWith('PASTE_');
     if (!scriptConfigured) {
+      renderSavedPanel(commit, localOutcome, { ok: false, text: 'Not added — the Google Apps Script isn’t set up yet.' });
       showToast('✅ Invoice finalized (Apps Script not set up yet — tracking sheet NOT updated).' + localNote);
       return;
     }
     if (!sheetConfig.sheetId) {
+      renderSavedPanel(commit, localOutcome, { ok: false, text: 'Not added — no tracking sheet chosen yet (tap “⚙️ Update tracking sheet” above).' });
       showToast('✅ Invoice finalized (tracking sheet not set up yet — use ⚙️ above).' + localNote);
       return;
     }
@@ -1256,12 +1308,102 @@ async function confirmInvoiceSent() {
       const data = await resp.json();
       if (!data.ok) throw new Error(data.error || 'Apps Script returned an error');
     } catch (e) {
+      renderSavedPanel(commit, localOutcome, { ok: false, text: 'Not added: ' + plainReason(e) + '.' });
       showToast('⚠️ Invoice finalized, but the tracking sheet update failed: ' + e.message + localNote);
       return;
     }
   }
 
+  const rowCount = commit.sheetRows.length;
+  renderSavedPanel(commit, localOutcome, {
+    ok: true,
+    text: rowCount ? `${rowCount} row${rowCount === 1 ? '' : 's'} added to the “${sheetConfig.tabName}” tab.` : 'No line items to add.'
+  });
   showToast('✅ All done — invoice finalized!' + localNote);
+}
+
+// ── "Saved" status panel (display only — never changes how anything is saved) ──
+// Turns a technical error into a short plain-English reason.
+// Returns a short phrase with no capital letter and no full stop, so callers can fit it into a sentence.
+function plainReason(err) {
+  const msg = String((err && err.message) || err || '').trim();
+  if (!msg) return 'something went wrong (no details given)';
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) return 'couldn’t connect (check your internet connection)';
+  if (/unexpected end of json|unexpected token|json/i.test(msg)) return 'the server sent back an unexpected reply';
+  return msg.length > 110 ? msg.slice(0, 107) + '…' : msg;
+}
+const sentenceCase = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+function hideSavedPanel() {
+  const p = document.getElementById('saved-panel');
+  if (p) p.style.display = 'none';
+}
+function dismissSavedPanel() { hideSavedPanel(); }
+
+async function renderSavedPanel(commit, localOutcome, sheetStep) {
+  try {
+    // Outcomes of the two saves that were fired off when the draft was created (already finished by now).
+    const numResult = commit.invoiceNumSave ? await commit.invoiceNumSave : { ok: true };
+    const photoResult = commit.photoSave ? await commit.photoSave : { ok: true };
+
+    const steps = [];
+
+    steps.push(numResult.ok
+      ? { ok: true, label: 'Invoice number advanced', detail: `Next invoice will be #${commit.nextInvoiceNum}` }
+      : { ok: false, label: 'Invoice number only saved on this device',
+          detail: `Next invoice is #${commit.nextInvoiceNum} on this device, but it didn’t reach the server: ${plainReason(numResult.error)}.` });
+
+    if (!commit.photoCount) {
+      steps.push({ ok: true, label: 'Photos marked as processed', detail: '0 — none of the photos came from the Drive folder, so nothing to mark.' });
+    } else if (photoResult.ok) {
+      steps.push({ ok: true, label: 'Photos marked as processed', detail: `${commit.photoCount} photo${commit.photoCount === 1 ? '' : 's'} marked` });
+    } else {
+      steps.push({ ok: false, label: 'Photos NOT marked as processed',
+        detail: `${sentenceCase(plainReason(photoResult.error))}. They may be picked up again on the next scan.` });
+    }
+
+    steps.push(Object.assign({ label: 'Added to the Google tracking sheet' }, sheetStep.ok
+      ? { ok: true, detail: sheetStep.text } : { ok: false, detail: sheetStep.text }));
+
+    if (localOutcome.ok) {
+      let folderName = 'the chosen';
+      try { const h = await loadDirectoryHandle(); if (h && h.name) folderName = '“' + h.name + '”'; } catch (e) {}
+      steps.push({ ok: true, label: 'PDF saved to the ' + folderName + ' folder', detail: commit.pdfFilename });
+    } else {
+      let why;
+      if (localOutcome.reason === 'permission-denied') why = 'Not saved — folder permission was denied (tap “📁 Choose local save folder”).';
+      else if (localOutcome.reason === 'error') why = 'Not saved: ' + plainReason({ message: localOutcome.error }) + '.';
+      else if (!window.showDirectoryPicker) why = 'Not saved — this browser can’t save to a folder (use Chrome on your computer).';
+      else why = 'Not saved — folder not selected.';
+      steps.push({ ok: false, label: 'PDF not saved to the Gwinganna folder', detail: why });
+    }
+
+    const allOk = steps.every(s => s.ok);
+    const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const panel = document.getElementById('saved-panel');
+    panel.classList.toggle('warn', !allOk);
+    document.getElementById('saved-banner-title').textContent = allOk ? '✅ All saved' : '❌ Something needs attention';
+    document.getElementById('saved-banner-sub').textContent = `Invoice #${commit.invNum} - saved ${time}`;
+
+    const list = document.getElementById('saved-steps');
+    list.innerHTML = '';
+    steps.forEach(s => {
+      const li = document.createElement('li');
+      if (!s.ok) li.className = 'fail';
+      const icon = document.createElement('span'); icon.className = 'saved-icon'; icon.textContent = s.ok ? '✅' : '❌';
+      const body = document.createElement('span');
+      const label = document.createElement('span'); label.className = 'saved-label'; label.textContent = s.label;
+      const detail = document.createElement('span'); detail.className = 'saved-detail'; detail.textContent = s.detail;
+      body.appendChild(label); body.appendChild(detail);
+      li.appendChild(icon); li.appendChild(body);
+      list.appendChild(li);
+    });
+
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    console.log('Could not show the saved panel:', e); // display problem only — the saving above already finished
+  }
 }
 
 // ── PDF filename & print ──
