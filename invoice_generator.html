@@ -329,7 +329,7 @@ const ADDON_KEYWORDS = ['mask']; // notes-field keywords that flag a possible ad
 let sessions = [];
 let uploadedImages = [];
 let pendingInvoicedFileIds = []; // Drive file IDs that produced real sessions this batch — committed to the ledger when the invoice is sent
-let pendingSendCommit = null; // holds {nextInvoiceNum, driveFileIds, sheetRows} between "Draft Gmail" and "I've sent it"
+let pendingSendCommit = null; // holds {sheetRows, pdfBase64, pdfFilename} between "Draft Gmail" and "I've sent it"
 let sheetConfig = { sheetId: '', tabName: '' }; // this year's accumulation-sheet target, loaded from KV
 let accessToken = null;
 let gapiReady = false;
@@ -1173,10 +1173,25 @@ async function openGmail(){
 
     window.open('https://mail.google.com/mail/#drafts', '_blank');
 
+    // Build sheet rows now, before the invoice number advances below
+    const sheetRows = buildSheetRows(invNum);
+
+    // Advance the invoice number for next week
+    const nextInvoiceNum = parseInt(invNum) + 1;
+    document.getElementById('inv-num').value = nextInvoiceNum;
+    localStorage.setItem('invoiceNum', nextInvoiceNum);
+    fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Action': 'set-invoice-num' },
+      body: JSON.stringify({ invoiceNum: nextInvoiceNum })
+    }).catch(e => console.log('KV save failed:', e));
+
+    // Mark this batch's source photos as used
+    addProcessedPhotoIds(pendingInvoicedFileIds);
+    pendingInvoicedFileIds = [];
+
     pendingSendCommit = {
-      nextInvoiceNum: parseInt(invNum) + 1,
-      driveFileIds: [...pendingInvoicedFileIds],
-      sheetRows: buildSheetRows(invNum),
+      sheetRows: sheetRows,
       pdfBase64: pdfBase64,
       pdfFilename: pdfFilename
     };
@@ -1214,19 +1229,6 @@ async function confirmInvoiceSent() {
     localSaveWarning = ' ⚠️ Local save failed: ' + e.message;
   }
   const localNote = savedLocally ? ' This invoice was saved locally as well.' : localSaveWarning;
-
-  // Advance the invoice number for next week
-  document.getElementById('inv-num').value = commit.nextInvoiceNum;
-  localStorage.setItem('invoiceNum', commit.nextInvoiceNum);
-  fetch(WORKER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Action': 'set-invoice-num' },
-    body: JSON.stringify({ invoiceNum: commit.nextInvoiceNum })
-  }).catch(e => console.log('KV save failed:', e));
-
-  // Mark this batch's source photos as used
-  addProcessedPhotoIds(commit.driveFileIds);
-  pendingInvoicedFileIds = [];
 
   // Append this invoice's line items to the accumulation sheet
   if (commit.sheetRows.length) {
